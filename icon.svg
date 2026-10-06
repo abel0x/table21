@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#15402e"/>
+      <stop offset="58%" stop-color="#0a2419"/>
+      <stop offset="100%" stop-color="#04110b"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7ecc0"/>
+      <stop offset="28%" stop-color="#e6c869"/>
+      <stop offset="52%" stop-color="#b8902f"/>
+      <stop offset="74%" stop-color="#f0dd9a"/>
+      <stop offset="100%" stop-color="#8c6a1c"/>
+    </linearGradient>
+    <linearGradient id="spade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fbf1c8"/>
+      <stop offset="45%" stop-color="#e7c869"/>
+      <stop offset="100%" stop-color="#a87d24"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="38%" cy="28%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".5"/>
+    </filter>
+  </defs>
+
+  <!-- App tile -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Medallion -->
+  <g filter="url(#soft)">
+    <circle cx="256" cy="256" r="182" fill="none" stroke="url(#ring)" stroke-width="16"/>
+    <circle cx="256" cy="256" r="160" fill="none" stroke="url(#ring)" stroke-width="4" opacity=".7"/>
+    <circle cx="256" cy="256" r="150" fill="#08231a"/>
+  </g>
+
+  <!-- Decorative dots around the ring -->
+  <g fill="url(#ring)">
+    <circle cx="256" cy="58" r="7"/>
+    <circle cx="454" cy="256" r="7"/>
+    <circle cx="256" cy="454" r="7"/>
+    <circle cx="58" cy="256" r="7"/>
+  </g>
+
+  <!-- Spade -->
+  <g filter="url(#soft)">
+    <path fill="url(#spade)" d="M256 150
+      C256 150 336 214 336 268
+      C336 304 310 326 282 326
+      C274 326 268 324 263 320
+      C266 340 274 356 292 368
+      L220 368
+      C238 356 246 340 249 320
+      C244 324 238 326 230 326
+      C202 326 176 304 176 268
+      C176 214 256 150 256 150 Z"/>
+  </g>
+  <ellipse cx="232" cy="214" rx="34" ry="46" fill="url(#sheen)"/>
+
+  <!-- Table 21 wordmark -->
+  <text x="256" y="408" font-family="Georgia, 'Times New Roman', serif" font-size="44"
+        font-weight="700" letter-spacing="6" fill="url(#ring)" text-anchor="middle">21</text>
+</svg>

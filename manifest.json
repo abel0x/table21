@@ -1,0 +1,22 @@
+{
+  "name": "Table 21: Offline Blackjack",
+  "short_name": "Table 21",
+  "description": "A polished blackjack game that works completely offline.",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "lang": "en",
+  "dir": "ltr",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05110c",
+  "theme_color": "#0b3d2e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

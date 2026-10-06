@@ -1,0 +1,497 @@
+"use strict";
+
+// Uses an already installed Puppeteer only for auditing, never at runtime.
+// BLACKJACK_PUPPETEER_PATH=/absolute/path/to/puppeteer node --test this-file
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const os = require("node:os");
+const http = require("node:http");
+const { pathToFileURL } = require("node:url");
+const puppeteer = require(process.env.BLACKJACK_PUPPETEER_PATH || "puppeteer");
+const root = path.resolve(__dirname, "../..");
+const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "blackjack-audit-20260924-"));
+const isFirefox = process.env.BLACKJACK_BROWSER === "firefox";
+let browser, server, baseURL, workerRevision = 0, sceneIndex = 0;
+
+test.before(async () => {
+  server = http.createServer((request, response) => {
+    const relative = decodeURIComponent(new URL(request.url, "http://localhost").pathname).replace(/^\/+/, "") || "index.html";
+    const file = path.resolve(root, relative);
+    if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
+    try {
+      let body = fs.readFileSync(file);
+      if (relative === "sw.js") body = Buffer.from(body.toString().replace(/vbj-v\d+/, "vbj-audit-" + workerRevision));
+      const mime = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".ogg": "audio/ogg", ".woff2": "font/woff2" }[path.extname(file)] || "application/octet-stream";
+      response.writeHead(200, { "Content-Type": mime, "Cache-Control": "no-store" }).end(body);
+    } catch { response.writeHead(404).end(); }
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  baseURL = "http://127.0.0.1:" + server.address().port + "/index.html";
+  browser = await puppeteer.launch(isFirefox
+    ? { browser: "firefox", executablePath: process.env.BLACKJACK_BROWSER_PATH || "/usr/bin/firefox", headless: true, protocolTimeout: 15000, extraPrefsFirefox: { "ui.prefersReducedMotion": 1 } }
+    : { headless: true, protocolTimeout: 15000, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
+  console.log("Audit browser: " + await browser.version());
+  console.log("Audit screenshots: " + artifacts);
+});
+
+test.after(async () => {
+  if (browser) await browser.close();
+  if (server) await new Promise(resolve => server.close(resolve));
+});
+
+async function scene(options, run) {
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  const errors = [], remote = [];
+  let failed = false;
+  const sceneId = ++sceneIndex;
+  page.setDefaultTimeout(5000);
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("request", request => {
+    if (/^https?:/.test(request.url()) && !request.url().startsWith(new URL(baseURL).origin + "/")) remote.push(request.url());
+  });
+  await page.setViewport({ width: options.width || 1280, height: options.height || 900 });
+  if (!isFirefox) await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: options.motion ? "no-preference" : "reduce" }]);
+  await page.evaluateOnNewDocument(config => {
+    // BiDi also invokes preloads in the initial, origin-less document.
+    if (!["file:", "http:", "https:"].includes(location.protocol)) return;
+    if (config.noLocks) Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+    if (!sessionStorage.getItem("audit.initialized")) {
+      localStorage.clear();
+      localStorage.setItem("vbj.bankroll", JSON.stringify(config.bankroll == null ? 10000 : config.bankroll));
+      localStorage.setItem("vbj.settings", JSON.stringify(Object.assign({ ruleProfile: "atlanticCity", theme: "emerald", animationSpeed: "fast" }, config.settings)));
+      localStorage.setItem("vbj.lang", config.lang || "en");
+      localStorage.setItem("vbj.sound", "false");
+      sessionStorage.setItem("audit.initialized", "true");
+    }
+    Object.defineProperty(window, "BlackjackEngine", {
+      configurable: true,
+      set(api) {
+        if (config.draw) {
+          api.shuffle = function (shoe) {
+            const selected = config.draw.map(spec => {
+              const rank = typeof spec === "string" ? spec : spec.rank;
+              const suit = typeof spec === "string" ? null : spec.suit;
+              const index = shoe.findIndex(card => card.rank === rank && (!suit || card.suit === suit));
+              if (index < 0) throw new Error("Invalid audit shoe: missing " + rank);
+              return shoe.splice(index, 1)[0];
+            });
+            return shoe.concat(selected.reverse());
+          };
+        }
+        const settle = api.settleRound;
+        api.settleRound = function () {
+          const result = settle.apply(api, arguments);
+          window.auditSettlement = JSON.parse(JSON.stringify(result));
+          return result;
+        };
+        Object.defineProperty(window, "BlackjackEngine", { value: api, writable: true, configurable: true });
+      }
+    });
+  }, options);
+  try {
+    await page.goto(options.web ? baseURL : pathToFileURL(path.join(root, "index.html")).href, { waitUntil: "load" });
+    await run(page);
+    assert.deepEqual(errors, [], "browser runtime errors");
+    assert.deepEqual(remote, [], "external requests");
+  } catch (error) {
+    failed = true;
+    const screenshot = path.join(artifacts, "failure-" + sceneId + ".png");
+    try { await page.screenshot({ path: screenshot, fullPage: true }); } catch {}
+    error.message += " [scene " + sceneId + ", " + screenshot + "]";
+    throw error;
+  } finally {
+    try { await context.close(); }
+    catch (error) { if (!failed) throw error; }
+  }
+}
+
+async function phase(page, value) {
+  await page.waitForFunction(expected => document.body.dataset.phase === expected, { timeout: 6000 }, value);
+}
+async function deal(page, chip = "100") {
+  await page.click('.chip[data-value="' + chip + '"]');
+  await page.click("#btnDeal");
+}
+async function reverseTab(page) {
+  await page.keyboard.down("Shift");
+  await page.keyboard.press("Tab");
+  await page.keyboard.up("Shift");
+}
+
+for (const lang of ["en", "tr"]) {
+  test(lang + ": visible translation bindings match the selected language", async () => {
+    await scene({ lang }, async page => {
+      const mismatch = await page.evaluate(() => [...document.querySelectorAll("[data-i18n]")].filter(node => node.textContent !== I18n.t(node.dataset.i18n)).map(node => ({ key: node.dataset.i18n, text: node.textContent })));
+      assert.deepEqual(mismatch, []);
+      assert.equal(await page.$eval("html", node => node.lang), lang);
+    });
+  });
+  const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  const names = lang === "tr"
+    ? ["Ası", "İkilisi", "Üçlüsü", "Dörtlüsü", "Beşlisi", "Altılısı", "Yedilisi", "Sekizlisi", "Dokuzlusu", "Onlusu", "Valesi", "Kızı", "Papazı"]
+    : ["Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen", "King"];
+  const suits = ["♠", "♥", "♦", "♣"];
+  const suitNames = lang === "tr" ? ["Maça", "Kupa", "Karo", "Sinek"] : ["spades", "hearts", "diamonds", "clubs"];
+  for (const [rankIndex, rank] of ranks.entries()) {
+    for (const [suitIndex, suit] of suits.entries()) {
+      test(lang + ": card matrix " + rank + suit + " has exact name, indices, color and artwork", async () => {
+        await scene({ lang, draw: [{ rank, suit }, "6", "2", "10"] }, async page => {
+          await deal(page); await phase(page, "player");
+          const card = await page.$eval("#playerHands .card", node => ({
+            name: node.getAttribute("aria-label"),
+            corners: [...node.querySelectorAll(".corner")].map(corner => corner.textContent),
+            red: node.classList.contains("red"),
+            pips: [...node.querySelectorAll(".pip-mark")].map(pip => pip.textContent),
+            court: [...node.querySelectorAll(".court-person")].map(person => person.getAttribute("class")),
+            centerRanks: [...node.querySelectorAll(".court-center-rank")].map(label => label.textContent)
+          }));
+          const expectedName = lang === "tr" ? suitNames[suitIndex] + " " + names[rankIndex] : names[rankIndex] + " of " + suitNames[suitIndex];
+          assert.equal(card.name, expectedName);
+          assert.deepEqual(card.corners, [rank, rank]);
+          assert.equal(card.red, suit === "♥" || suit === "♦");
+          if (["J", "Q", "K"].includes(rank)) {
+            assert.deepEqual(card.pips, []);
+            assert.deepEqual(card.centerRanks, [rank]);
+            assert.deepEqual(card.court, Array(2).fill("court-person court-person-" + rank.toLowerCase()));
+          } else {
+            assert.deepEqual(card.pips, Array(rank === "A" ? 1 : Number(rank)).fill(suit));
+            assert.deepEqual(card.court, []);
+          }
+        });
+      });
+    }
+  }
+  test(lang + ": insurance dialog contains focus during forward and reverse tabbing", async () => {
+    await scene({ lang, draw: ["10", "A", "7", "9"] }, async page => {
+      await deal(page); await phase(page, "insurance");
+      await page.focus("#btnInsNo"); await page.keyboard.press("Tab");
+      assert.equal(await page.evaluate(() => document.activeElement.id), "btnInsYes");
+      await reverseTab(page);
+      assert.equal(await page.evaluate(() => document.activeElement.id), "btnInsNo");
+      await page.keyboard.press("Escape"); await phase(page, "player");
+      assert.equal(await page.$eval("#insuranceOverlay", node => node.hidden), true);
+    });
+  });
+}
+
+test("language changes translate a currently visible deposit notification", async () => {
+  await scene({}, async page => {
+    await page.click("#settingsBtn"); await page.click('[data-deposit="1000"]'); await page.click('[data-set-lang="tr"]');
+    const toast = await page.$eval("#toast", node => node.textContent);
+    assert.equal(toast, "Bakiyenize $1.000 eklendi");
+  });
+});
+
+test("language change during settlement preserves the arriving payment stack", { skip: isFirefox && "This timing test requires per-page media emulation, unavailable through this BiDi adapter" }, async () => {
+  await scene({ motion: true, draw: ["10", "9", "9", "8"] }, async page => {
+    await deal(page); await phase(page, "player"); await page.click("#btnStand");
+    await page.waitForSelector(".hand-payout-stack.arriving .stack-chip");
+    const before = await page.$$eval(".hand-payout-stack .stack-chip", nodes => nodes.length);
+    await page.click('[data-lang="tr"]');
+    const after = await page.$$eval(".hand-payout-stack .stack-chip", nodes => nodes.length);
+    assert.equal(after, before, "translating text must preserve a payment that is already visible");
+  });
+});
+
+test("language change during card collection preserves the discard animation", { skip: isFirefox && "This timing test requires per-page media emulation, unavailable through this BiDi adapter" }, async () => {
+  await scene({ motion: true, draw: ["10", "9", "7", "8"] }, async page => {
+    await deal(page); await phase(page, "player"); await page.click("#btnStand");
+    await page.waitForSelector(".card.collecting");
+    const count = await page.$$eval(".card.collecting", nodes => nodes.length);
+    await page.click('[data-lang="tr"]');
+    assert.equal(await page.$$eval(".card.collecting", nodes => nodes.length), count);
+  });
+});
+
+test("a language change while the bankroll counts up cannot rewind the balance", async () => {
+  await scene({}, async page => {
+    await page.click("#settingsBtn");
+    await page.click('[data-deposit="100000"]');
+    await page.waitForFunction(() => localStorage.getItem("vbj.bankroll") === "110000");
+    const amounts = await page.evaluate(async () => {
+      I18n.setLanguage("tr");
+      const initial = document.querySelector("#bankroll").textContent;
+      await new Promise(requestAnimationFrame);
+      return { initial, next: document.querySelector("#bankroll").textContent };
+    });
+    assert.equal(amounts.next, amounts.initial);
+  });
+});
+
+for (const [width, height] of [[844,390], [667,375], [568,320], [640,400], [320,568], [768,1024]]) {
+  test("table and controls do not overlap at " + width + "x" + height, async () => {
+    await scene({ width, height, lang: "tr" }, async page => {
+      const geometry = await page.evaluate(() => ({ tableBottom: document.querySelector(".table-felt").getBoundingClientRect().bottom, controlsTop: document.querySelector(".controls").getBoundingClientRect().top, viewport: innerHeight }));
+      assert.ok(geometry.tableBottom <= geometry.controlsTop + 1, JSON.stringify(geometry));
+      assert.ok(geometry.tableBottom <= geometry.viewport, JSON.stringify(geometry));
+    });
+  });
+}
+
+for (const [width, height] of [[844,390], [667,375], [568,320], [640,400]]) {
+  test("landscape live hand remains readable and playable at " + width + "x" + height, async () => {
+    await scene({ width, height, lang: "tr", draw: ["10", "9", "7", "8"] }, async page => {
+      await deal(page); await phase(page, "player");
+      const clipped = await page.evaluate(() => {
+        const felt = document.querySelector(".table-felt").getBoundingClientRect();
+        return [...document.querySelectorAll(".card, .hand-tag, .hand-wager")].filter(node => {
+          const box = node.getBoundingClientRect();
+          return box.left < felt.left || box.right > felt.right || box.top < felt.top || box.bottom > felt.bottom;
+        }).map(node => node.className);
+      });
+      assert.deepEqual(clipped, []);
+      if (process.env.BLACKJACK_SCREENSHOTS) await page.screenshot({ path: path.join(artifacts, "landscape-" + width + "-" + height + ".png"), fullPage: true });
+      await page.click("#btnStand"); await phase(page, "betting");
+      assert.equal(await page.evaluate(() => auditSettlement.profit), 0);
+    });
+  });
+}
+
+test("all-in accepts the remaining sub-minimum top-up to an already valid wager", async () => {
+  await scene({ bankroll: 101 }, async page => {
+    await page.click('.chip[data-value="100"]');
+    assert.equal(await page.$eval('.chip[data-value="allin"]', node => node.disabled), false, "the valid final wager is $101 even though its extra chip is $1");
+  });
+});
+
+test("maximum accepted all-in wager survives a winning round and reload exactly", async () => {
+  await scene({ bankroll: require(path.join(root, "js/engine.js")).MAX_WAGER, draw: ["10", "9", "9", "8"] }, async page => {
+    await deal(page, "allin"); await phase(page, "player"); await page.click("#btnStand"); await phase(page, "betting");
+    const before = await page.evaluate(() => localStorage.getItem("vbj.bankroll"));
+    await page.reload({ waitUntil: "load" });
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), before, "reload must not silently discard winnings");
+  });
+});
+
+test("an existing maximum-safe account is preserved while unsafe wagers are disabled", async () => {
+  await scene({ bankroll: Number.MAX_SAFE_INTEGER }, async page => {
+    await page.waitForFunction(() => document.body.dataset.busy === "false");
+    assert.equal(await page.$eval('.chip[data-value="allin"]', node => node.disabled), true);
+    assert.equal(await page.$eval('.chip[data-value="100"]', node => node.disabled), true);
+    assert.match(await page.$eval('.chip[data-value="allin"]', node => node.title), /Maximum safe wager/);
+    await page.reload({ waitUntil: "load" });
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), String(Number.MAX_SAFE_INTEGER));
+  });
+});
+
+test("an invalid fractional deposit is rejected instead of silently rounded", async () => {
+  await scene({}, async page => {
+    await page.click("#settingsBtn"); await page.type("#depositAmount", "1.9");
+    assert.equal(await page.$eval("#depositAmount", node => node.validity.stepMismatch), true);
+    await page.click("#btnDeposit");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+  });
+});
+
+test("mouse and keyboard settings dialogs retain focus inside and restore it", async () => {
+  await scene({}, async page => {
+    await page.click("#settingsBtn"); await page.focus("#btnResetStats"); await page.keyboard.press("Tab");
+    assert.equal(await page.evaluate(() => document.activeElement.matches("#settingsModal button[data-close]")), true);
+    await reverseTab(page); assert.equal(await page.evaluate(() => document.activeElement.id), "btnResetStats");
+    await page.keyboard.press("Escape"); assert.equal(await page.evaluate(() => document.activeElement.id), "settingsBtn");
+  });
+});
+
+test("Enter on the focused Clear button clears the wager without starting a hand", async () => {
+  await scene({ draw: ["10", "9", "7", "8"] }, async page => {
+    await page.click('.chip[data-value="100"]'); await page.focus("#btnClear"); await page.keyboard.press("Enter");
+    const state = await page.evaluate(() => ({ phase: document.body.dataset.phase, wager: document.querySelector("#currentBet").textContent }));
+    assert.deepEqual(state, { phase: "betting", wager: "0" });
+  });
+});
+
+test("Enter on the focused settings button does not also deal a pending wager", async () => {
+  await scene({ draw: ["10", "9", "7", "8"] }, async page => {
+    await page.click('.chip[data-value="100"]'); await page.focus("#settingsBtn"); await page.keyboard.press("Enter");
+    const state = await page.evaluate(() => ({ phase: document.body.dataset.phase, hidden: document.querySelector("#settingsModal").hidden }));
+    assert.deepEqual(state, { phase: "betting", hidden: false });
+  });
+});
+
+test("two open tabs preserve both deposits to their shared bankroll", async () => {
+  await scene({}, async page => {
+    const second = await page.browserContext().newPage();
+    try {
+      await second.goto(page.url(), { waitUntil: "load" });
+      second.setDefaultTimeout(5000);
+      await page.bringToFront();
+      await page.click("#settingsBtn"); await page.click('[data-deposit="1000"]');
+      await second.bringToFront();
+      await second.click("#settingsBtn"); await second.click('[data-deposit="5000"]');
+      await second.waitForFunction(() => document.body.dataset.busy === "false");
+      assert.equal(await second.evaluate(() => localStorage.getItem("vbj.bankroll")), "16000", "a stale tab must not overwrite another tab's deposit");
+    } finally { await second.close(); }
+  });
+});
+
+async function secondTab(page) {
+  const second = await page.browserContext().newPage();
+  second.setDefaultTimeout(5000);
+  await second.goto(page.url(), { waitUntil: "load" });
+  await second.waitForFunction(() => document.body.dataset.busy === "false");
+  return second;
+}
+
+test("concurrent deposits in separate tabs are serialized without losing either one", async () => {
+  await scene({}, async page => {
+    const second = await secondTab(page);
+    try {
+      await Promise.all([
+        page.evaluate(() => document.querySelector('[data-deposit="1000"]').click()),
+        second.evaluate(() => document.querySelector('[data-deposit="5000"]').click())
+      ]);
+      await second.waitForFunction(() => localStorage.getItem("vbj.bankroll") === "16000");
+      assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "16000");
+    } finally { await second.close(); }
+  });
+});
+
+test("another tab cannot deposit or deal over an unfinished hand, then can proceed after settlement", async () => {
+  await scene({ draw: ["10", "9", "9", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    const second = await secondTab(page);
+    try {
+      await second.click("#settingsBtn"); await second.click('[data-deposit="5000"]');
+      await second.waitForFunction(() => document.body.dataset.busy === "false");
+      assert.equal(await second.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+      assert.match(await second.$eval("#toast", node => node.textContent), /Another tab/);
+      await second.keyboard.press("Escape");
+      await deal(second); await second.waitForFunction(() => document.body.dataset.busy === "false");
+      assert.equal(await second.$eval("body", node => node.dataset.phase), "betting");
+      await page.bringToFront(); await page.click("#btnStand"); await phase(page, "betting");
+      await second.bringToFront(); await second.click("#settingsBtn"); await second.click('[data-deposit="5000"]');
+      await second.waitForFunction(() => localStorage.getItem("vbj.bankroll") === "15100");
+    } finally { await second.close(); }
+  });
+});
+
+test("closing a tab with an unfinished hand releases the shared account lock", async () => {
+  await scene({ draw: ["10", "9", "7", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    const second = await secondTab(page);
+    try {
+      await page.close();
+      await second.click("#settingsBtn"); await second.click('[data-deposit="1000"]');
+      await second.waitForFunction(() => localStorage.getItem("vbj.bankroll") === "11000");
+    } finally { await second.close(); }
+  });
+});
+
+test("without cross-tab locks the offline game keeps an isolated reloadable session balance", async () => {
+  await scene({ noLocks: true, draw: ["10", "9", "9", "8"] }, async page => {
+    await page.click("#settingsBtn"); await page.click('[data-deposit="1000"]');
+    await page.waitForFunction(() => sessionStorage.getItem("table21.session.vbj.bankroll") === "11000");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+    await page.reload({ waitUntil: "load" });
+    assert.equal(await page.$eval("#bankroll", node => node.textContent), "11,000");
+    await deal(page); await phase(page, "player"); await page.click("#btnStand"); await phase(page, "betting");
+    assert.equal(await page.evaluate(() => sessionStorage.getItem("table21.session.vbj.bankroll")), "11100");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+  });
+});
+
+test("changing the live system reduced-motion setting updates game timing", { skip: isFirefox && "Live media emulation is unavailable through this BiDi adapter" }, async () => {
+  await scene({ motion: true, draw: ["10", "9", "7", "8"] }, async page => {
+    await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+    const started = Date.now(); await deal(page); await phase(page, "player");
+    assert.ok(Date.now() - started < 1000, "CSS and JavaScript should both respect the current reduced-motion preference");
+  });
+});
+
+test("European insurance still pays after the player busts", async () => {
+  await scene({ settings: { ruleProfile: "european" }, draw: ["10", "A", "7", "K", "K"] }, async page => {
+    await deal(page); await phase(page, "insurance"); await page.click("#btnInsYes"); await phase(page, "player"); await page.click("#btnHit"); await phase(page, "betting");
+    const round = await page.evaluate(() => auditSettlement);
+    assert.deepEqual(round.outcomes, ["bust"]); assert.equal(round.insuranceReturn, 150); assert.equal(round.profit, 0);
+  });
+});
+
+test("European dealer blackjack collects both halves of a doubled wager", async () => {
+  await scene({ settings: { ruleProfile: "european" }, draw: ["5", "10", "6", "10", "A"] }, async page => {
+    await deal(page); await phase(page, "player"); await page.click("#btnDouble"); await phase(page, "betting");
+    const round = await page.evaluate(() => auditSettlement);
+    assert.deepEqual(round.outcomes, ["lose"]); assert.equal(round.profit, -200); assert.equal(round.dealerBlackjack, true);
+  });
+});
+
+test("four split hands settle independently and preserve total stake", async () => {
+  await scene({ draw: ["8", "9", "8", "8", "8", "8", "2", "3", "4", "5"] }, async page => {
+    await deal(page); await phase(page, "player");
+    for (let count = 2; count <= 4; count++) {
+      await page.click("#btnSplit"); await page.waitForFunction(n => document.querySelectorAll(".player-hand").length === n && !document.querySelector("#btnStand").disabled, {}, count);
+    }
+    for (let i = 0; i < 4; i++) {
+      await page.waitForFunction(() => !document.querySelector("#btnStand").disabled); await page.click("#btnStand");
+    }
+    await phase(page, "betting");
+    const round = await page.evaluate(() => auditSettlement);
+    assert.equal(round.counts.hands, 4); assert.equal(round.mainStake, 400); assert.equal(round.counts.wins + round.counts.losses + round.counts.pushes, 4);
+  });
+});
+
+test("four split hands fit the shortest landscape table and remain playable", async () => {
+  await scene({ width: 568, height: 320, lang: "tr", draw: ["8", "9", "8", "8", "8", "8", "2", "3", "4", "5"] }, async page => {
+    await deal(page); await phase(page, "player");
+    for (let count = 2; count <= 4; count++) {
+      await page.click("#btnSplit");
+      await page.waitForFunction(n => document.querySelectorAll(".player-hand").length === n && !document.querySelector("#btnStand").disabled, {}, count);
+    }
+    const clipped = await page.evaluate(() => {
+      const felt = document.querySelector(".table-felt").getBoundingClientRect();
+      return [...document.querySelectorAll(".card, .hand-tag, .hand-wager")].filter(node => {
+        const box = node.getBoundingClientRect();
+        return box.left < felt.left || box.right > felt.right || box.top < felt.top || box.bottom > felt.bottom;
+      }).map(node => node.className);
+    });
+    assert.deepEqual(clipped, []);
+    const coversHands = await page.evaluate(() => {
+      const hands = [...document.querySelectorAll(".card, .hand-tag, .hand-wager")].map(node => node.getBoundingClientRect());
+      return [...document.querySelectorAll(".table-specs, .table-center")].filter(node => {
+        const box = node.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && hands.some(hand => box.left < hand.right && box.right > hand.left && box.top < hand.bottom && box.bottom > hand.top);
+      }).map(node => node.className);
+    });
+    assert.deepEqual(coversHands, []);
+    if (process.env.BLACKJACK_SCREENSHOTS) await page.screenshot({ path: path.join(artifacts, "landscape-four-splits.png"), fullPage: true });
+    for (let i = 0; i < 4; i++) {
+      await page.waitForFunction(() => !document.querySelector("#btnStand").disabled); await page.click("#btnStand");
+    }
+    await phase(page, "betting");
+    assert.equal(await page.evaluate(() => auditSettlement.counts.hands), 4);
+  });
+});
+
+test("an offline PWA can reload and finish a complete deterministic hand", { skip: isFirefox && "Network-offline emulation is unavailable through this BiDi adapter" }, async () => {
+  await scene({ web: true, draw: ["10", "9", "9", "8"] }, async page => {
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await page.setOfflineMode(true); await page.reload({ waitUntil: "load" });
+    await deal(page); await phase(page, "player"); await page.click("#btnStand"); await phase(page, "betting");
+    assert.equal(await page.evaluate(() => auditSettlement.profit), 100);
+  });
+});
+
+test("installing a new real service worker preserves a live player decision", async () => {
+  await scene({ web: true, draw: ["10", "9", "7", "8"] }, async page => {
+    await page.evaluate(() => navigator.serviceWorker.ready); await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await page.reload({ waitUntil: "load" });
+    await deal(page); await phase(page, "player");
+    await page.evaluate(() => { window.auditLiveDocument = true; });
+    workerRevision++;
+    const navigation = page.waitForNavigation({ waitUntil: "load", timeout: 2500 }).then(() => true, error => {
+      if (error.name === "TimeoutError") return false;
+      throw error;
+    });
+    await page.evaluate(() => { navigator.serviceWorker.getRegistration().then(registration => registration.update()); });
+    assert.equal(await navigation, false, "a new worker reloaded the page during the player's decision");
+    assert.equal(await page.evaluate(() => document.body.dataset.phase), "player");
+    const safeReload = page.waitForNavigation({ waitUntil: "load", timeout: 10000 });
+    await page.click("#btnStand");
+    await safeReload;
+    assert.equal(await page.evaluate(() => document.body.dataset.phase), "betting");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+  });
+});
