@@ -1,0 +1,15 @@
+{
+  "name": "table21",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static, offline blackjack. The game itself has no dependencies; Puppeteer is only for the optional browser tests.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "node --test tests audits/2026-09-24/behavior.test.cjs",
+    "test:browser": "node --test audits/2026-09-24/browser.test.cjs",
+    "serve": "python3 -m http.server 8000 --bind 127.0.0.1"
+  },
+  "devDependencies": {
+    "puppeteer": "23.11.1"
+  }
+}

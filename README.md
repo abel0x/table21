@@ -43,13 +43,18 @@ node --test tests
 
 The suite currently executes **417 deterministic cases**. It covers exhaustive hand and payout matrices, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
 
-Include the additional behavior regressions for **452 Node tests**:
+Include the additional behavior regressions for **452 Node tests** (`npm test` runs the same command):
 
 ```bash
 node --test tests audits/2026-09-24/behavior.test.cjs
 ```
 
-The optional real-browser suite adds **141 Chromium tests**, including `file://` play, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. It requires a locally installed Puppeteer and browser only for development; the game does not use them or download packages. See the [27 September fix and verification report](audits/2026-09-27/REPORT.md) for commands, Firefox cross-checks, and coverage limits.
+The optional real-browser suite adds **141 Chromium tests**, including `file://` play, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+
+```bash
+npm install
+npm run test:browser
+``` See the [27 September fix and verification report](audits/2026-09-27/REPORT.md) for commands, Firefox cross-checks, and coverage limits.
 
 ## Files
 
@@ -71,6 +76,7 @@ assets/fonts/      local WOFF2 interface font + OFL license
 tools/             reproducible local audio generator
 tests/             dependency-free rule and offline integrity tests
 audits/            dated findings and runnable behavior/browser regressions
+package.json       test scripts + dev-only Puppeteer (not needed to play)
 ```
 
 ---
