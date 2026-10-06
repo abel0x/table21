@@ -10,7 +10,7 @@
         data-i18n-content="appDescription" />
   <title>Table 21: Offline Blackjack</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -172,18 +172,6 @@
           </span>
         </div>
 
-        <!-- Insurance prompt, presented on the felt like a real table -->
-        <div id="insuranceOverlay" class="ins-overlay" hidden>
-          <div class="ins-panel" role="dialog" aria-modal="true" aria-labelledby="insTitle" aria-describedby="insDesc">
-            <div class="ins-line" id="insEyebrow" data-i18n="insuranceLabel">INSURANCE</div>
-            <h3 id="insTitle" data-i18n="insuranceTitle">Take insurance?</h3>
-            <p id="insDesc" data-i18n="insuranceDesc">The dealer shows an Ace. Insurance pays 2 to 1.</p>
-            <div class="ins-actions">
-            <button id="btnInsYes" class="btn btn-primary" type="button" data-i18n="takeInsurance">Insure</button>
-            <button id="btnInsNo" class="btn btn-ghost" type="button" data-i18n="declineOffer">No, thanks</button>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -210,6 +198,19 @@
         <button id="btnDouble" class="btn btn-action" type="button" data-i18n="double" aria-keyshortcuts="D">Double</button>
         <button id="btnSplit" class="btn btn-action" type="button" data-i18n="split" aria-keyshortcuts="P">Split</button>
         <button id="btnSurrender" class="btn btn-action" type="button" data-i18n="surrender" aria-keyshortcuts="X">Surrender</button>
+      </div>
+
+      <!-- Insurance prompt: takes over the controls so the whole table stays visible -->
+      <div id="insuranceOverlay" class="ins-overlay" hidden>
+        <div class="ins-panel" role="dialog" aria-modal="true" aria-labelledby="insTitle" aria-describedby="insDesc">
+          <div class="ins-line" id="insEyebrow" data-i18n="insuranceLabel">INSURANCE</div>
+          <h3 id="insTitle" data-i18n="insuranceTitle">Take insurance?</h3>
+          <p id="insDesc" data-i18n="insuranceDesc">The dealer shows an Ace. Insurance pays 2 to 1.</p>
+          <div class="ins-actions">
+          <button id="btnInsYes" class="btn btn-primary" type="button" data-i18n="takeInsurance">Insure</button>
+          <button id="btnInsNo" class="btn btn-ghost" type="button" data-i18n="declineOffer">No, thanks</button>
+          </div>
+        </div>
       </div>
     </section>
   </main>

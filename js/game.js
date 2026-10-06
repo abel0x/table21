@@ -319,17 +319,31 @@
     el.dealerLine.setAttribute("data-i18n-pick", eventKey);
     el.dealerLine.classList.add("show");
     clearTimeout(dealerTimer);
-    dealerTimer = setTimeout(function () {
-      el.dealerLine.classList.remove("show");
-    }, 3200);
+    dealerTimer = setTimeout(dealerQuiet, 3200);
+  }
+  function dealerQuiet() {
+    clearTimeout(dealerTimer);
+    if (el.dealerLine) el.dealerLine.classList.remove("show");
   }
 
-  // Big centered outcome splash (BLACKJACK / WIN / PUSH / BUST / LOSE).
-  function showResult(variant, translationKey) {
+  // Big centered outcome splash (BLACKJACK / WIN / PUSH / BUST / LOSE) with the
+  // round's net amount. It is the single visual verdict: while it shows, the
+  // banner below it is visually hidden (still announced) and the dealer stays quiet.
+  function signedMoney(amount) {
+    return (amount > 0 ? "+" : (amount < 0 ? "\u2212" : "")) + "$" + fmt(Math.abs(amount));
+  }
+  function renderResultAmount() {
+    var amountNode = el.resultBadge && el.resultBadge.querySelector(".result-amount");
+    if (amountNode) amountNode.textContent = signedMoney(parseInt(amountNode.getAttribute("data-amount"), 10));
+  }
+  function showResult(variant, translationKey, amount) {
     if (!el.resultBadge) return;
     el.resultBadge.hidden = false;
-    el.resultBadge.textContent = t(translationKey);
-    el.resultBadge.setAttribute("data-i18n", translationKey);
+    el.resultBadge.innerHTML = '<span class="result-word" data-i18n="' + translationKey + '"></span>' +
+      (amount ? '<span class="result-amount" data-amount="' + amount + '"></span>' : "");
+    el.resultBadge.querySelector(".result-word").textContent = t(translationKey);
+    renderResultAmount();
+    dealerQuiet();
     el.resultBadge.className = "result-badge " + variant;
     void el.resultBadge.offsetWidth; // restart animation
     el.resultBadge.classList.add("show");
@@ -345,7 +359,7 @@
     if (immediate) {
       el.resultBadge.hidden = true;
       el.resultBadge.className = "result-badge";
-      el.resultBadge.removeAttribute("data-i18n");
+      el.resultBadge.textContent = "";
       return;
     }
     el.resultBadge.classList.remove("show");
@@ -591,27 +605,38 @@
       startCardDeal(cardNode);
     });
     if (state.dealer.hideHole) {
-      var up = handValue([state.dealer.cards[0]]);
-      el.dealerScore.textContent = state.dealer.cards.length ? String(up.total) : "";
+      el.dealerScore.textContent = state.dealer.cards.length ? Engine.totalLabel([state.dealer.cards[0]], true) : "";
       el.dealerScore.className = "score-chip";
     } else {
       var v = handValue(state.dealer.cards);
-      el.dealerScore.textContent = state.dealer.cards.length ? String(v.total) : "";
+      // A lone up-card (no-hole-card tables) is still a live soft count: "1/11".
+      el.dealerScore.textContent = state.dealer.cards.length ? Engine.totalLabel(state.dealer.cards, state.dealer.cards.length === 1) : "";
       el.dealerScore.className = "score-chip" +
         (v.total > 21 ? " bust" : (isBlackjack(state.dealer.cards) ? " bj" : ""));
     }
+  }
+
+  function handIsLive(hand) {
+    return state.phase !== "dealer" && state.phase !== "payout" && !hand.done && !hand.result;
   }
 
   function renderHandTag(tag, hand, idx) {
     var v = handValue(hand.cards);
     var label = state.hands.length > 1 ? (t("handLabel") + " " + (idx + 1) + " · ") : "";
     var naturalBlackjack = state.hands.length === 1 && !hand.fromSplit && isBlackjack(hand.cards);
-    var scoreTxt = v.total > 21 ? t("bustShort") : (naturalBlackjack ? "BJ" : String(v.total));
+    var scoreTxt = v.total > 21 ? t("bustShort") : (naturalBlackjack ? "BJ" : Engine.totalLabel(hand.cards, handIsLive(hand)));
     tag.innerHTML = '<span>' + label + scoreTxt + '</span><span class="htag-bet">$' + fmt(hand.bet) + '</span>';
     if (hand.result) {
       var rcls = handReturnsWager(hand.result) && hand.result !== "push" ? "win" : (hand.result === "push" ? "" : "lose");
       tag.innerHTML += '<span class="htag-res ' + rcls + '">' + resultShort(hand.result) + '</span>';
     }
+  }
+
+  // Once play leaves the player, soft totals collapse to a single number.
+  function refreshHandTotals() {
+    el.playerHands.querySelectorAll(".player-hand").forEach(function (wrap, index) {
+      if (state.hands[index]) renderHandTag(wrap.querySelector(".hand-tag"), state.hands[index], index);
+    });
   }
 
   // Translation never replaces cards or payment nodes: their in-flight CSS
@@ -643,9 +668,15 @@
 
       var handRow = document.createElement("div");
       handRow.className = "hand";
-      hand.cards.forEach(function (c) {
+      hand.cards.forEach(function (c, cardIndex) {
         var animate = !c._shown; c._shown = true;
         var ce = cardEl(c, false, animate);
+        // The double-down card lies sideways, as dealt at a real table.
+        if (hand.doubled && cardIndex === 2) {
+          ce.classList.add("double-card");
+          ce.style.setProperty("--card-turn", "90deg");
+          ce.style.setProperty("--card-lift", "0px");
+        }
         if (hand.result === "win" || hand.result === "blackjack" || hand.result === "evenMoney" || hand.result === "dealerBust") {
           ce.classList.add("win-glow");
         }
@@ -690,7 +721,7 @@
     // Single-hand score chip near header
     if (state.hands.length === 1) {
       var hv = handValue(state.hands[0].cards);
-      el.playerScore.textContent = state.hands[0].cards.length ? String(hv.total) : "";
+      el.playerScore.textContent = state.hands[0].cards.length ? Engine.totalLabel(state.hands[0].cards, handIsLive(state.hands[0])) : "";
       el.playerScore.className = "score-chip" +
         (hv.total > 21 ? " bust" : (!state.hands[0].fromSplit && isBlackjack(state.hands[0].cards) ? " bj" : ""));
     } else {
@@ -1519,10 +1550,8 @@
     state.phase = "payout";
     renderPlayer();
     setBannerKey("surrendered", "flash-lose");
-    toastKey("surrendered", "lose");
     Sound.lose();
-    dealerSay("sayLose");
-    showResult("lose", "youLose");
+    showResult("lose", "surrenderShort", -loss);
     finishRound(-loss, refund, { sidePaymentAmount: 0 });
   }
 
@@ -1609,6 +1638,7 @@
     state.phase = "dealer";
     setBannerKey("dealerTurn");
     updateControls();
+    refreshHandTotals();
     if (state.settings.dealerHoleCard) {
       revealHole();
       await delay(700);
@@ -1627,6 +1657,7 @@
     state.phase = "dealer";
     setBannerKey("dealerTurn");
     updateControls();
+    refreshHandTotals();
     state.busy = true;
     if (state.settings.dealerHoleCard) {
       revealHole();
@@ -1696,41 +1727,35 @@
       if (r === "evenMoney") {
         summaryKey = "evenMoneyPaid";
         summaryClass = "flash-win";
-        Sound.blackjack(); dealerSay("sayBlackjack"); showResult("bj", "evenMoneyShort");
-        toastKey("evenMoneyPaidAmount", "win", { amount: profit });
+        Sound.blackjack(); showResult("bj", "evenMoneyShort", profit);
       } else if (hadInsurance) {
         // Present the real net result, not just the main hand. A winning insurance
         // bet normally offsets a dealer blackjack exactly.
         if (profit > 0) {
           summaryKey = "playerWin"; summaryClass = "flash-win";
-          Sound.win(); dealerSay("sayWin"); showResult("win", "youWin");
-          moneyToast(profit, "win");
+          Sound.win(); showResult("win", "youWin", profit);
         } else if (profit < 0) {
           summaryKey = "insuranceNetLoss"; summaryClass = "flash-lose";
-          Sound.lose(); dealerSay("sayLose"); showResult("lose", "youLose");
-          moneyToast(profit, "lose");
+          Sound.lose(); showResult("lose", "youLose", profit);
         } else {
           summaryKey = "insuranceSaved";
-          Sound.push(); dealerSay("sayPush"); showResult("push", "pushShort");
-          toastKey("insuranceSaved", "");
+          Sound.push(); showResult("push", "pushShort");
         }
       } else {
         switch (r) {
-          case "blackjack": summaryKey = "blackjackWin"; summaryClass = "flash-win"; Sound.blackjack(); dealerSay("sayBlackjack"); showResult("bj", "bjShort"); moneyToast(profit, "win", "bjShort"); break;
-          case "win": summaryKey = "playerWin"; summaryClass = "flash-win"; Sound.win(); dealerSay("sayWin"); showResult("win", "youWin"); moneyToast(profit, "win", "youWin"); break;
-          case "dealerBust": summaryKey = "dealerBust"; summaryClass = "flash-win"; Sound.win(); dealerSay("sayWin"); showResult("win", "youWin"); moneyToast(profit, "win", "youWin"); break;
-          case "push": summaryKey = "push"; summaryClass = ""; Sound.push(); dealerSay("sayPush"); showResult("push", "pushShort"); toastKey("pushShort", ""); break;
-          case "bust": summaryKey = "bust"; summaryClass = "flash-lose"; dealerSay("sayBust"); showResult("lose", "bustShort"); moneyToast(profit, "lose", "bustShort"); break;
-          case "lose": summaryKey = "dealerWin"; summaryClass = "flash-lose"; Sound.lose(); dealerSay("sayLose"); showResult("lose", "youLose"); moneyToast(profit, "lose", "youLose"); break;
+          case "blackjack": summaryKey = "blackjackWin"; summaryClass = "flash-win"; Sound.blackjack(); showResult("bj", "bjShort", profit); break;
+          case "win": summaryKey = "playerWin"; summaryClass = "flash-win"; Sound.win(); showResult("win", "youWin", profit); break;
+          case "dealerBust": summaryKey = "dealerBust"; summaryClass = "flash-win"; Sound.win(); showResult("win", "youWin", profit); break;
+          case "push": summaryKey = "push"; summaryClass = ""; Sound.push(); showResult("push", "pushShort"); break;
+          case "bust": summaryKey = "bust"; summaryClass = "flash-lose"; showResult("lose", "bustShort", profit); break;
+          case "lose": summaryKey = "dealerWin"; summaryClass = "flash-lose"; Sound.lose(); showResult("lose", "youLose", profit); break;
         }
       }
     } else {
       // Multi-hand: summarise net
-      if (profit > 0) { summaryKey = "playerWin"; summaryClass = "flash-win"; Sound.win(); dealerSay("sayWin"); showResult("win", "youWin"); }
-      else if (profit < 0) { summaryKey = "dealerWin"; summaryClass = "flash-lose"; Sound.lose(); dealerSay("sayLose"); showResult("lose", "youLose"); }
-      else { summaryKey = "push"; summaryClass = ""; Sound.push(); dealerSay("sayPush"); showResult("push", "pushShort"); }
-      moneyToast(profit,
-        profit > 0 ? "win" : (profit === 0 ? "" : "lose"));
+      if (profit > 0) { summaryKey = "playerWin"; summaryClass = "flash-win"; Sound.win(); showResult("win", "youWin", profit); }
+      else if (profit < 0) { summaryKey = "dealerWin"; summaryClass = "flash-lose"; Sound.lose(); showResult("lose", "youLose", profit); }
+      else { summaryKey = "push"; summaryClass = ""; Sound.push(); showResult("push", "pushShort"); }
     }
     if (summaryKey) setBannerKey(summaryKey, summaryClass);
     finishRound(profit, round.totalReturn, { sidePaymentAmount: round.insuranceReturn });
@@ -2095,6 +2120,7 @@
       el.currentBet.textContent = fmt(state.bet);
       translateHands();
       renderToast();
+      renderResultAmount();
       renderStats();
       renderShoeStatus();
       var dealerKey = el.dealerLine && el.dealerLine.getAttribute("data-i18n-pick");

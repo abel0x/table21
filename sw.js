@@ -1,6 +1,6 @@
 /* Service worker — caches the static shell for full offline play.
    Only used when the game is served over http(s); on file:// it is skipped. */
-var CACHE_VERSION = "vbj-v27";
+var CACHE_VERSION = "vbj-v28";
 var APP_ROOT = new URL("./", self.location.href || self.location.origin + "/");
 var CACHE_PREFIX = "vbj-" + encodeURIComponent(APP_ROOT.pathname) + "-";
 var CACHE = CACHE_PREFIX + CACHE_VERSION.slice(4);
@@ -17,6 +17,7 @@ var ASSETS = [
   "./js/pwa.js",
   "./manifest.json",
   "./icon.svg",
+  "./apple-touch-icon.png",
   "./assets/fonts/table21-sans-regular.woff2",
   "./assets/fonts/table21-sans-semibold.woff2",
   "./assets/audio/card-slide-1.ogg",

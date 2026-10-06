@@ -168,15 +168,14 @@
       bust: "Player busts",
       dealerBust: "Dealer busts. Player wins.",
       surrendered: "Surrendered. Half your bet was returned.",
-      insuranceWon: "Insurance paid 2 to 1",
       evenMoneyPaid: "Even money paid 1 to 1",
-      evenMoneyPaidAmount: "Even money +${amount}",
       youWin: "WIN",
       youLose: "LOSE",
       pushShort: "PUSH",
       bjShort: "BLACKJACK",
       evenMoneyShort: "EVEN MONEY",
       bustShort: "BUST",
+      surrenderShort: "SURRENDER",
       handLabel: "Hand",
 
       // Rotating, sincere re-stake lines when a player busts out.
@@ -187,12 +186,7 @@
 
       // Short remarks from the dealer — give the table a pulse.
       sayWelcome: ["Place your wager."],
-      sayDeal: ["Cards in play."],
-      sayWin: ["Player wins."],
-      sayLose: ["Dealer wins."],
-      sayPush: ["Push. Bet returned."],
-      sayBlackjack: ["Blackjack."],
-      sayBust: ["Player busts."]
+      sayDeal: ["Cards in play."]
     },
 
     tr: {
@@ -352,15 +346,14 @@
       bust: "Oyuncu 21'i geçti",
       dealerBust: "Krupiye 21'i geçti. Oyuncu kazandı.",
       surrendered: "El teslim edildi. Bahsinizin yarısı iade edildi.",
-      insuranceWon: "Sigorta 1'e 2 ödedi",
       evenMoneyPaid: "Garantili 1'e 1 ödeme yapıldı",
-      evenMoneyPaidAmount: "Garantili ödeme +${amount}",
       youWin: "KAZANDINIZ",
       youLose: "KAYBETTİNİZ",
       pushShort: "BERABERE",
       bjShort: "BLACKJACK",
       evenMoneyShort: "1'E 1 ÖDEME",
       bustShort: "21'İ GEÇTİNİZ",
+      surrenderShort: "TESLİM OLDUNUZ",
       handLabel: "El",
 
       restake: [
@@ -369,12 +362,7 @@
       ],
 
       sayWelcome: ["Bahsinizi yapın."],
-      sayDeal: ["Kartlar oyunda."],
-      sayWin: ["Oyuncu kazandı."],
-      sayLose: ["Krupiye kazandı."],
-      sayPush: ["Beraberlik. Bahis iade edildi."],
-      sayBlackjack: ["Blackjack."],
-      sayBust: ["Oyuncu 21'i geçti."]
+      sayDeal: ["Kartlar oyunda."]
     }
   };
 

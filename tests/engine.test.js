@@ -15,6 +15,18 @@ test("ace values stay soft only while an ace can count as eleven", function () {
   assert.deepEqual(Engine.handValue([card("A"), card("A"), card("9"), card("K")]), { total: 21, soft: false });
 });
 
+test("live soft totals show both counts; settled hands and soft 21 show one", function () {
+  assert.equal(Engine.totalLabel([card("A"), card("6")], true), "7/17");
+  assert.equal(Engine.totalLabel([card("A")], true), "1/11");
+  assert.equal(Engine.totalLabel([card("A"), card("A")], true), "2/12");
+  assert.equal(Engine.totalLabel([card("A"), card("6")], false), "17");
+  assert.equal(Engine.totalLabel([card("A"), card("K")], true), "21");
+  assert.equal(Engine.totalLabel([card("A"), card("5"), card("5")], true), "21");
+  assert.equal(Engine.totalLabel([card("A"), card("6"), card("9")], true), "16");
+  assert.equal(Engine.totalLabel([card("10"), card("6")], true), "16");
+  assert.equal(Engine.totalLabel([card("10"), card("6"), card("9")], true), "25");
+});
+
 test("a shoe has the right composition and physical card ids", function () {
   var shoe = Engine.buildShoe(2);
   assert.equal(shoe.length, 104);

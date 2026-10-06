@@ -736,6 +736,13 @@ body {
 .card:not(:first-child) { margin-left: -38px; }
 .hand .card, .player-hand .hand .card { margin-left: 0; }
 .hand .card:not(:first-child) { margin-left: -20px; }
+/* Rotated about its centre, a sideways card is .4w wider than its layout box;
+   the margins give that overhang back so it neither collides nor clips. */
+.player-hand .hand .card.double-card {
+  transform-origin: center center;
+  margin-left: calc(var(--w) * .02);
+  margin-right: calc(var(--w) * .2);
+}
 #dealerHand .card { transition: margin-left .28s ease, z-index 0s; }
 #dealerHand .card:first-child { z-index: 2; }
 #dealerHand .card.hole-card {
@@ -1041,7 +1048,7 @@ body {
 /* ----------------------- Result badge ----------------------- */
 .result-badge {
   position: absolute;
-  top: 41%; left: 50%;
+  top: 43%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: 6;
   pointer-events: none;
@@ -1061,6 +1068,17 @@ body {
   opacity: 0;
 }
 .result-badge[hidden] { display: none; }
+.result-word, .result-amount { display: block; }
+.result-amount {
+  margin-top: 2px;
+  font-size: .5em;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  opacity: .9;
+}
+/* The badge is the one visual verdict; the banner keeps announcing the full
+   sentence to assistive technology but steps out of the way visually. */
+.result-badge.show ~ .table-center .banner { opacity: 0; }
 .result-badge.show { animation: badgePop .5s cubic-bezier(.2, 1.25, .3, 1) both; }
 @keyframes badgePop {
   0%   { opacity: 0; transform: translate(-50%, -46%) scale(.94); }
@@ -1680,43 +1698,56 @@ body:not([data-phase="betting"]) .bet-circle-value { opacity: 0; }
   35%      { box-shadow: 0 0 0 1px rgba(226,194,109,.68), 0 5px 16px rgba(0,0,0,.28); }
 }
 
-/* ----------------------- On-felt insurance ----------------------- */
+/* ----------------------- Insurance prompt ----------------------- */
+/* The offer covers the (inactive) controls instead of the felt, so the player
+   can still read both hands while deciding. It is anchored to the bottom of
+   the controls box and never changes its size, so the table does not reflow. */
 .ins-overlay {
   position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(60% 60% at 50% 40%, var(--overlay-top), var(--overlay-bottom));
+  left: 0; right: 0; bottom: 0;
+  min-height: 100%;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   animation: fadeIn .25s ease both;
 }
 .ins-overlay[hidden] { display: none; }
+/* Not visibility: .btn transitions "all", so visibility would return a frame
+   late and swallow the first click after the offer closes. */
+body[data-phase="insurance"] .controls > :not(.ins-overlay) { opacity: 0; pointer-events: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .ins-panel {
-  text-align: center;
-  padding: 22px 30px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 24px;
+  width: min(640px, 100%);
+  text-align: left;
+  padding: 14px 22px;
   border-radius: 16px;
   background: linear-gradient(180deg, var(--surface-top), var(--surface-bottom));
   border: 1px solid rgba(217, 182, 95, .45);
   box-shadow: 0 22px 50px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(255,255,255,.04);
-  max-width: min(420px, 86%);
   animation: insRise .35s cubic-bezier(.2, .8, .25, 1) both;
 }
+.ins-panel > :not(.ins-actions) { grid-column: 1; }
+.ins-panel > .ins-actions { grid-column: 2; grid-row: 1 / span 3; }
 @keyframes insRise { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
 .ins-line {
   font-size: 10px; letter-spacing: 5px; color: rgba(244, 226, 166, .55);
-  border-bottom: 1px solid rgba(217, 182, 95, .25);
-  padding-bottom: 8px; margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 .ins-panel h3 {
   font-family: var(--font-display);
-  font-size: 24px; letter-spacing: 1px; color: var(--gold-bright); margin-bottom: 8px;
+  font-size: 22px; letter-spacing: 1px; color: var(--gold-bright); margin-bottom: 4px;
 }
-.ins-panel p { font-size: 13px; color: rgba(244, 239, 226, .75); margin-bottom: 18px; line-height: 1.5; }
+.ins-panel p { font-size: 13px; color: rgba(244, 239, 226, .75); line-height: 1.45; }
 .ins-actions { display: flex; gap: 12px; justify-content: center; }
 
 /* ----------------------- Controls ----------------------- */
 .controls {
+  position: relative;
   width: min(1080px, 100%);
   flex: 0 0 auto;
   display: flex;
@@ -2412,6 +2443,7 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
     transform: scale(.78);
     transform-origin: bottom left;
   }
+  .btn { min-height: 44px; }
   .btn-action { min-width: 0; flex: 1 1 28%; }
   .action-sep { display: none; }
   .bet-spot { bottom: 8px; }
@@ -2428,6 +2460,11 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   }
   .bet-stack.pile-dense .pile-row + .pile-row { margin-top: -18px; }
   .result-badge { font-size: clamp(20px, 7.5vw, 34px); }
+  .ins-panel { grid-template-columns: 1fr; row-gap: 8px; text-align: center; padding: 10px 14px; }
+  .ins-panel > .ins-actions { grid-column: 1; grid-row: auto; }
+  .ins-line { display: none; }
+  .ins-panel h3 { font-size: 19px; margin-bottom: 0; }
+  .ins-panel p { font-size: 12px; }
   body[data-phase="betting"] .btn-action { display: none; }
   body:not([data-phase="betting"]) .btn-bet-control { display: none; }
   body:not([data-phase="betting"]) .chips-tray { display: none; }
@@ -2515,6 +2552,16 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
     bottom: 70px;
     transform: scale(.74);
   }
+  /* The oval narrows at the bottom corners; during play the retired bet circle
+     leaves the bottom centre free, which keeps the plaque inside the rail. */
+  body:not([data-phase="betting"]) .table-specs {
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%) scale(.74);
+    transform-origin: bottom center;
+  }
+  /* The brand already sits in the top bar; the discard tray needs this corner. */
+  .dealer-plate-tag { display: none; }
   .hand-count-2 {
     width: 100%;
     gap: 4px;
@@ -2599,18 +2646,27 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   body:not([data-phase="betting"]) .btn-bet-control,
   body:not([data-phase="betting"]) .chips-tray { display: none; }
   body:not([data-phase="betting"]) .bet-spot { visibility: hidden; }
-  .ins-panel { max-height: 100%; overflow-y: auto; padding: 10px 14px; }
-  .ins-panel h3 { font-size: 17px; }
-  .ins-panel p { margin-block: 5px; font-size: 12px; }
+  .ins-panel { padding: 4px 6px 4px 14px; }
+  .ins-line { display: none; }
+  .ins-panel h3 { font-size: 16px; margin-bottom: 0; }
+  .ins-panel p { font-size: 11px; line-height: 1.3; }
   .toast { max-width: calc(100vw - 24px); font-size: 13px; padding: 8px 14px; text-align: center; }
 }
 
 @media (max-height: 450px) and (min-width: 540px) {
+  /* Landscape phones: a slimmer top bar pays for 44px touch targets and larger cards. */
+  .topbar { padding-block: 3px; }
+  .brand-mark svg { width: 30px; height: 30px; }
+  .balance-pill { padding: 3px 12px; }
+  .balance-label { display: none; }
+  .icon-btn { width: 36px; height: 36px; }
+  .lang-btn { padding-block: 5px; }
+  .card { --w: clamp(42px, 13vh, 60px); }
   .controls { flex-direction: row; justify-content: center; gap: 10px; }
-  .chips-tray { flex-wrap: nowrap; gap: 6px; padding: 5px 8px; }
-  .chip { --size: 38px; }
+  .chips-tray { flex-wrap: nowrap; gap: 6px; padding: 3px 8px; }
+  .chip { --size: 40px; }
   .action-row { flex-wrap: nowrap; }
-  .btn { padding-inline: 10px; }
+  .btn { min-height: 44px; padding-inline: 14px; font-size: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

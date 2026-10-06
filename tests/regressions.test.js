@@ -185,3 +185,34 @@ test("unrelated clients and unrelated messages cannot trigger activation", async
   await app.requestActivation("outsider"); await app.requestActivation("ready", "unrelated");
   assert.equal(app.activations, 0);
 });
+
+test("the insurance offer lives in the controls so it never covers either hand", () => {
+  const html = read("index.html");
+  const controls = html.slice(html.indexOf('<section class="controls"'), html.indexOf("</section>", html.indexOf('<section class="controls"')));
+  assert.match(controls, /id="insuranceOverlay"/);
+  assert.doesNotMatch(html.slice(html.indexOf('<div class="table-felt">'), html.indexOf('<section class="controls"')), /insuranceOverlay/);
+});
+
+test("hidden controls under the insurance offer return instantly, not via a transition", () => {
+  const css = read("css/styles.css");
+  const rule = css.match(/body\[data-phase="insurance"\] \.controls > :not\(\.ins-overlay\) \{([^}]*)\}/);
+  assert.ok(rule, "insurance-phase controls rule");
+  assert.doesNotMatch(rule[1], /visibility/);
+  assert.match(rule[1], /pointer-events:\s*none/);
+});
+
+test("iOS gets a PNG home-screen icon that is also cached offline", () => {
+  assert.match(read("index.html"), /<link rel="apple-touch-icon" href="apple-touch-icon\.png" \/>/);
+  const png = fs.readFileSync(path.join(__dirname, "..", "apple-touch-icon.png"));
+  assert.equal(png.subarray(1, 4).toString(), "PNG");
+  assert.equal(png.readUInt32BE(16), 180);
+  assert.equal(png.readUInt32BE(20), 180);
+  assert.match(read("sw.js"), /"\.\/apple-touch-icon\.png"/);
+});
+
+test("settlement shows one verdict: no money toast or dealer echo alongside the badge", () => {
+  const game = read("js/game.js");
+  const settle = game.slice(game.indexOf("function settle()"), game.indexOf("function prepareHandSettlements"));
+  assert.doesNotMatch(settle, /moneyToast|toastKey|dealerSay/);
+  assert.match(settle, /showResult\("win", "youWin", profit\)/);
+});

@@ -111,6 +111,13 @@
     return { total: total, soft: aces > 0 };
   }
 
+  // Display total: a live soft hand shows both counts ("7/17"), the way players
+  // read it at a real table. Settled hands and soft 21 show one number.
+  function totalLabel(cards, live) {
+    var value = handValue(cards);
+    return live && value.soft && value.total < 21 ? (value.total - 10) + "/" + value.total : String(value.total);
+  }
+
   function isBlackjack(cards) {
     return Array.isArray(cards) && cards.length === 2 && handValue(cards).total === 21;
   }
@@ -216,6 +223,7 @@
     shuffle: shuffle,
     cardValue: cardValue,
     handValue: handValue,
+    totalLabel: totalLabel,
     isBlackjack: isBlackjack,
     resolveHand: resolveHand,
     payoutFor: payoutFor,

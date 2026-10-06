@@ -243,9 +243,3 @@ test("Turkish interface copy contains no stray English action words", function (
   });
 });
 
-test("even-money amount messages have exactly one separator space", function () {
-  var loaded = loadI18n();
-  assert.equal(loaded.I18n.t("evenMoneyPaidAmount", { amount: "100" }), "Even money +$100");
-  loaded.I18n.setLanguage("tr");
-  assert.equal(loaded.I18n.t("evenMoneyPaidAmount", { amount: "100" }), "Garantili ödeme +$100");
-});

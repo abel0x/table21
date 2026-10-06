@@ -23,7 +23,8 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 - **Physical table flow**: cards leave the shoe, the hole card is exposed when the selected rules use one, and settled cards move into the discard tray. Every split hand owns an independent physical wager; doubled stakes visibly grow in place, losing stacks are collected separately, and each hand's winnings arrive as denomination-correct chips. The balance display changes when the chips move, not before.
 - **Visible table conditions**: a quiet plaque shows the table limits, number of decks, active S17/H17 dealer rule, and selected table profile. Short landscape layouts simplify or hide it to keep the cards and controls clear; the full rules remain available in settings.
 - **Living table**: restrained dealer status lines react to each hand, progressively growing high-limit chip piles remain readable at large values, and Fast, Normal, or Cinematic animation pacing is available.
-- **Insurance, done right**: presented on the felt like a real table — not a checkbox.
+- **Insurance, done right**: the offer takes over the controls, not a checkbox and not a pop-up over the cards, so both hands stay readable while you decide.
+- **Table-true reading**: live soft hands show both counts (`7/17`, a dealer Ace shows `1/11`), the double-down card lies sideways, and each round ends with one clear verdict badge carrying the net amount.
 - **Sincere, rotating moments**: bust out and the house re-stakes you with a different friendly line each time.
 - **Professional local sound**: eight bundled OGG samples cover card slides, the hole-card flip, chips, payouts, and shuffling. A restrained Web Audio fallback remains available. Master, card, chip, and table-effect levels can be adjusted independently and saved locally.
 - **Bundled typography**: the interface uses a locally packaged OFL-licensed WOFF2 family, with no font service or network dependency.
@@ -41,9 +42,9 @@ The core test suite uses only Node's built-in test runner; there is nothing to i
 node --test tests
 ```
 
-The suite currently executes **417 deterministic cases**. It covers exhaustive hand and payout matrices, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
+The suite currently executes **421 deterministic cases**. It covers exhaustive hand and payout matrices, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
 
-Include the additional behavior regressions for **452 Node tests** (`npm test` runs the same command):
+Include the additional behavior regressions for **456 Node tests** (`npm test` runs the same command):
 
 ```bash
 node --test tests audits/2026-09-24/behavior.test.cjs
@@ -70,7 +71,7 @@ js/game.js         game state, betting, rendering, and interactions
 js/pwa.js          optional service-worker registration and safe updates
 manifest.json     installable PWA metadata
 sw.js              offline cache (only used when served over http)
-icon.svg          app icon
+icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
 assets/audio/      local card, chip, payout, and shuffle sounds
 assets/fonts/      local WOFF2 interface font + OFL license
 tools/             reproducible local audio generator
@@ -89,6 +90,7 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Kartlar `crypto.getRandomValues` ile **tamamen rastgele** karılır.
 - **Las Vegas, Atlantic City ve European** masa profilleri dağıtım, kapalı kart, peek, double, surrender ve split kurallarını birlikte değiştirir.
 - **Hit, Stand, Double, Split, Surrender, Insurance**, garantili ödeme (even money) ve Rebet bulunur; Blackjack **3:2** öder.
+- Yumuşak eller karar sürerken iki değeriyle gösterilir (`7/17`, krupiyenin As'ı `1/11`). Double kartı yan yatırılır. Sigorta teklifi kartların üstünü değil kontrol alanını kaplar. El sonunda net tutarı da gösteren tek bir sonuç rozeti çıkar.
 - Dil ve üç masa/kart arkası temasından seçiminiz tarayıcıya kaydedilir ve her açılışta hatırlanır.
 - Kartlar pabuçtan çıkar, seçili kurala göre kapalı kart fiziksel olarak açılır ve el bitince ıskarta tepsisine gider. Her split eli kendi gerçek jeton yığınına sahiptir; double olduğunda ilgili yığın büyür, ödeme ve toplama her el için ayrı yapılır.
 - Masa plakası limitleri, deste sayısını, S17/H17 kuralını ve etkin masa profilini gösterir. Kısa yatay ekranlarda kartlarla çakışmaması için sadeleşir veya gizlenir; tüm kurallar ayarlardan okunabilir.
@@ -99,4 +101,4 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Harici istek, paket veya CDN yoktur; `file://` kullanımı testlerle korunur.
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **593 test geçti**; ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- Son doğrulamada **597 test geçti** (456 Node + 141 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
