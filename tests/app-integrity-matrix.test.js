@@ -10,7 +10,7 @@ var root = path.resolve(__dirname, "..");
 var read = function (file) { return fs.readFileSync(path.join(root, file), "utf8"); };
 var runtimeTextFiles = [
   "index.html", "css/styles.css", "js/i18n.js", "js/sound.js", "js/engine.js",
-  "js/rules.js", "js/chip-stack.js", "js/game.js", "js/pwa.js", "sw.js", "manifest.json"
+  "js/rules.js", "js/chip-stack.js", "js/strategy.js", "js/game.js", "js/pwa.js", "sw.js", "manifest.json"
 ];
 
 runtimeTextFiles.forEach(function (file) {
@@ -24,7 +24,7 @@ runtimeTextFiles.forEach(function (file) {
 
 [
   "js/i18n.js", "js/sound.js", "js/engine.js", "js/rules.js",
-  "js/chip-stack.js", "js/game.js", "js/pwa.js", "sw.js"
+  "js/chip-stack.js", "js/strategy.js", "js/game.js", "js/pwa.js", "sw.js"
 ].forEach(function (file) {
   test("JavaScript parses successfully: " + file, function () {
     assert.doesNotThrow(function () { new vm.Script(read(file), { filename: file }); });
@@ -58,7 +58,7 @@ test("runtime scripts load in dependency order", function () {
   });
   assert.deepEqual(scripts, [
     "js/i18n.js", "js/sound.js", "js/engine.js", "js/rules.js",
-    "js/chip-stack.js", "js/game.js", "js/pwa.js"
+    "js/chip-stack.js", "js/strategy.js", "js/game.js", "js/pwa.js"
   ]);
 });
 
@@ -189,7 +189,7 @@ test("HTML has no inline executable event handlers", function () {
 });
 
 test("runtime JavaScript avoids dynamic code execution", function () {
-  ["js/i18n.js", "js/sound.js", "js/engine.js", "js/rules.js", "js/chip-stack.js", "js/game.js", "js/pwa.js", "sw.js"]
+  ["js/i18n.js", "js/sound.js", "js/engine.js", "js/rules.js", "js/chip-stack.js", "js/strategy.js", "js/game.js", "js/pwa.js", "sw.js"]
     .forEach(function (file) {
       assert.doesNotMatch(read(file), /\beval\s*\(|\bnew\s+Function\b/, file);
     });

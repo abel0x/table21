@@ -260,6 +260,16 @@
           </div>
         </div>
 
+        <div class="setting-row coach-setting">
+          <span class="setting-label" id="coachLabel" data-i18n="coach">Strategy coach</span>
+          <div class="seg coach-seg" role="radiogroup" aria-labelledby="coachLabel" aria-describedby="coachHint">
+            <button class="seg-btn active" data-set-coach="off" type="button" role="radio" aria-checked="true" data-i18n="coachOff">Off</button>
+            <button class="seg-btn" data-set-coach="feedback" type="button" role="radio" aria-checked="false" tabindex="-1" data-i18n="coachFeedback">Feedback</button>
+            <button class="seg-btn" data-set-coach="hints" type="button" role="radio" aria-checked="false" tabindex="-1" data-i18n="coachHints">Hints</button>
+          </div>
+        </div>
+        <p class="settings-hint" id="coachHint" data-i18n="coachHint">Basic strategy for the active table rules. Feedback flags a different play; Hints also mark the best one.</p>
+
         <div class="rule-profile-setting">
           <div class="setting-section-label" id="ruleProfileLabel" data-i18n="ruleProfiles">Table rules</div>
           <div class="rule-profile-picker" role="radiogroup" aria-labelledby="ruleProfileLabel">
@@ -348,6 +358,7 @@
           <div class="stat"><span data-i18n="pushes">Pushes</span><b id="stPushes">0</b></div>
           <div class="stat"><span data-i18n="blackjacks">Blackjacks</span><b id="stBj">0</b></div>
           <div class="stat"><span data-i18n="winRate">Win rate</span><b id="stRate">0%</b></div>
+          <div class="stat"><span data-i18n="strategyAccuracy">Strategy accuracy</span><b id="stStrategy">–</b></div>
         </div>
 
         <div class="setting-row deposit-row">
@@ -381,6 +392,7 @@
   <script src="js/engine.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/chip-stack.js"></script>
+  <script src="js/strategy.js"></script>
   <script src="js/game.js"></script>
   <script src="js/pwa.js"></script>
 </body>

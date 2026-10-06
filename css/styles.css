@@ -1698,6 +1698,23 @@ body:not([data-phase="betting"]) .bet-circle-value { opacity: 0; }
   35%      { box-shadow: 0 0 0 1px rgba(226,194,109,.68), 0 5px 16px rgba(0,0,0,.28); }
 }
 
+/* ----------------------- Strategy coach ----------------------- */
+/* Hints mode marks the basic-strategy play with a quiet brass ring and dot. */
+.btn.coach-pick:not(:disabled) {
+  position: relative;
+  box-shadow: 0 0 0 2px var(--gold-bright), 0 0 14px rgba(226, 194, 109, .35);
+}
+.btn.coach-pick:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  top: 5px; right: 6px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+}
+.toast.coach { border-color: var(--gold-bright); color: var(--cream); }
+.coach-seg .seg-btn { padding-inline: 11px; font-size: 12px; }
+
 /* ----------------------- Insurance prompt ----------------------- */
 /* The offer covers the (inactive) controls instead of the felt, so the player
    can still read both hands while deciding. It is anchored to the bottom of
@@ -2539,9 +2556,9 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   .modal-body { padding-inline: 16px; }
   .theme-picker { gap: 6px; }
   .theme-option { padding-inline: 5px; }
-  .animation-setting { align-items: stretch; flex-direction: column; gap: 8px; }
-  .animation-seg { width: 100%; }
-  .animation-seg .seg-btn { flex: 1 1 0; padding-inline: 6px; }
+  .animation-setting, .coach-setting { align-items: stretch; flex-direction: column; gap: 8px; }
+  .animation-seg, .coach-seg { width: 100%; }
+  .animation-seg .seg-btn, .coach-seg .seg-btn { flex: 1 1 0; padding-inline: 6px; }
   .deposit-row { align-items: stretch; flex-direction: column; gap: 8px; }
   .deposit-field { width: 100%; }
   .deposit-input { flex: 1 1 auto; width: auto; min-width: 0; }

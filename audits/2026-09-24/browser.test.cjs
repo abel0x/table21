@@ -495,3 +495,54 @@ test("installing a new real service worker preserves a live player decision", as
     assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
   });
 });
+
+// Strategy coach (added 2026-10-06).
+const stats = page => page.evaluate(() => JSON.parse(localStorage.getItem("vbj.stats")));
+
+test("coach hints mark the basic-strategy play and feedback names it", async () => {
+  await scene({ settings: { coach: "hints" }, draw: ["10", "10", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    assert.deepEqual(await page.$$eval(".coach-pick", nodes => nodes.map(node => node.id)), ["btnSurrender"]);
+    await page.click("#btnStand");
+    assert.equal(await page.$eval("#toast", node => node.textContent), "Basic strategy: Surrender on hard 16 vs 10");
+    await phase(page, "betting");
+    assert.deepEqual(await page.$$eval(".coach-pick", nodes => nodes.map(node => node.id)), []);
+    const saved = await stats(page);
+    assert.equal(saved.strategyDecisions, 1); assert.equal(saved.strategyCorrect, 0);
+  });
+});
+
+test("coach feedback speaks Turkish and stays quiet on the right play", async () => {
+  await scene({ lang: "tr", settings: { coach: "feedback" }, draw: ["8", "6", "8", "10", "3", "K", "2", "9"] }, async page => {
+    await deal(page); await phase(page, "player");
+    assert.deepEqual(await page.$$eval(".coach-pick", nodes => nodes.map(node => node.id)), []);
+    await page.click("#btnSplit");
+    await page.waitForFunction(() => document.querySelectorAll(".player-hand").length === 2 && !document.querySelector("#btnStand").disabled);
+    assert.equal(await page.$eval("#toast", node => node.hidden), true);
+    await page.click("#btnHit");
+    assert.equal(await page.$eval("#toast", node => node.textContent), "Temel strateji: sert 11, krupiye 6 → İkiye katla");
+  });
+});
+
+test("taken insurance is flagged in the loss toast and counted as a miss", async () => {
+  await scene({ settings: { coach: "feedback" }, draw: ["10", "A", "9", "7"] }, async page => {
+    await deal(page); await phase(page, "insurance");
+    await page.click("#btnInsYes"); await phase(page, "player");
+    assert.equal(await page.$eval("#toast", node => node.textContent), "Insurance lost: -$50. Basic strategy declines it.");
+    await page.click("#btnStand"); await phase(page, "betting");
+    const saved = await stats(page);
+    assert.equal(saved.strategyDecisions, 2); assert.equal(saved.strategyCorrect, 1);
+  });
+});
+
+test("coach off never interrupts but the accuracy statistic still counts", async () => {
+  await scene({ draw: ["10", "7", "2", "10"] }, async page => {
+    await deal(page); await phase(page, "player");
+    await page.click("#btnStand");
+    assert.equal(await page.$eval("#toast", node => node.hidden), true);
+    await phase(page, "betting");
+    await page.click("#settingsBtn");
+    assert.equal(await page.$eval("#stStrategy", node => node.textContent), "0% (1)");
+    assert.equal(await page.$eval('[data-set-coach="off"]', node => node.getAttribute("aria-checked")), "true");
+  });
+});

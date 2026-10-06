@@ -12,6 +12,8 @@
   if (!Rules) throw new Error("TableRules must load before game.js");
   var BetChipStack = global.BetChipStack;
   if (!BetChipStack) throw new Error("BetChipStack must load before game.js");
+  var Strategy = global.BlackjackStrategy;
+  if (!Strategy) throw new Error("BlackjackStrategy must load before game.js");
 
   var buildShoe = Engine.buildShoe;
   var shuffle = Engine.shuffle;
@@ -41,9 +43,10 @@
   /* ---------------- State ---------------- */
   var DEFAULT_SETTINGS = Rules.applyProfile({
     theme: "emerald",
-    animationSpeed: "normal"
+    animationSpeed: "normal",
+    coach: "off"
   }, "atlanticCity");
-  var DEFAULT_STATS = { hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0 };
+  var DEFAULT_STATS = { hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0, strategyDecisions: 0, strategyCorrect: 0 };
   var START_BANKROLL = 10000;
   var MIN_BET = 100;            // smallest chip on this table
   var MAX_BANKROLL = Number.MAX_SAFE_INTEGER;
@@ -52,6 +55,7 @@
   var ALLOWED_DECKS = [1, 2, 6, 8];
   var ALLOWED_THEMES = ["emerald", "midnight", "bordeaux"];
   var ALLOWED_ANIMATION_SPEEDS = ["fast", "normal", "cinematic"];
+  var ALLOWED_COACH_MODES = ["off", "feedback", "hints"];
   var ANIMATION_SCALES = { fast: 0.65, normal: 1, cinematic: 1.35 };
   var THEME_META_COLORS = { emerald: "#0b3d2e", midnight: "#102c49", bordeaux: "#4a1822" };
 
@@ -81,7 +85,8 @@
       doubleAfterSplit: value.doubleAfterSplit !== false,
       maxHands: value.maxHands === 2 ? 2 : 4,
       theme: ALLOWED_THEMES.indexOf(theme) !== -1 ? theme : DEFAULT_SETTINGS.theme,
-      animationSpeed: ALLOWED_ANIMATION_SPEEDS.indexOf(animationSpeed) !== -1 ? animationSpeed : DEFAULT_SETTINGS.animationSpeed
+      animationSpeed: ALLOWED_ANIMATION_SPEEDS.indexOf(animationSpeed) !== -1 ? animationSpeed : DEFAULT_SETTINGS.animationSpeed,
+      coach: ALLOWED_COACH_MODES.indexOf(value.coach) !== -1 ? value.coach : DEFAULT_SETTINGS.coach
     };
     if (explicitProfile) Rules.applyProfile(settings, explicitProfile);
     // A no-hole-card table cannot perform an American peek. Keep malformed or
@@ -97,7 +102,9 @@
       wins: safeCount(value.wins),
       losses: safeCount(value.losses),
       pushes: safeCount(value.pushes),
-      blackjacks: safeCount(value.blackjacks)
+      blackjacks: safeCount(value.blackjacks),
+      strategyDecisions: safeCount(value.strategyDecisions),
+      strategyCorrect: Math.min(safeCount(value.strategyCorrect), safeCount(value.strategyDecisions))
     };
   }
 
@@ -975,6 +982,74 @@
     var decided = state.stats.wins + state.stats.losses;
     var rate = decided ? Math.round((state.stats.wins / decided) * 100) : 0;
     $("stRate").textContent = rate + "%";
+    var decisions = state.stats.strategyDecisions;
+    $("stStrategy").textContent = decisions
+      ? Math.round((state.stats.strategyCorrect / decisions) * 100) + "% (" + fmt(decisions) + ")"
+      : "\u2013";
+  }
+
+  /* ---------------- Strategy coach ---------------- */
+  // Which optional plays the table offers for the active hand right now. The
+  // buttons and the coach share this, so advice never names a disabled play.
+  function availablePlays(hand) {
+    var firstMove = hand.cards.length === 2 && !hand.doubled;
+    return {
+      double: firstMove && Rules.canDouble(hand, state.settings, handValue) &&
+        canFundStake(hand.bet) && hand.bet * 2 <= Engine.MAX_WAGER,
+      split: firstMove && cardValue(hand.cards[0].rank) === cardValue(hand.cards[1].rank) &&
+        state.hands.length < state.settings.maxHands && canFundStake(hand.bet),
+      // Late surrender: only on the very first decision of a single, unsplit hand
+      surrender: state.settings.surrender && firstMove && state.hands.length === 1
+    };
+  }
+
+  function strategyAdvice() {
+    var hand = state.hands[state.active];
+    if (!hand || !state.dealer.cards.length) return null;
+    return Strategy.recommend(hand.cards, state.dealer.cards[0].rank, state.settings, availablePlays(hand));
+  }
+
+  function coachSituation(advice, upRank) {
+    var up = upRank === "A" ? "A" : String(cardValue(upRank));
+    if (advice.kind === "pair") return t("coachPair", { rank: advice.pairRank, up: up });
+    return t(advice.kind === "soft" ? "coachSoft" : "coachHard", { total: advice.total, up: up });
+  }
+
+  // Score one decision before it is carried out. A different play gets a short,
+  // localized note when the coach is on; the accuracy statistic always counts.
+  function judgeDecision(action) {
+    var advice = strategyAdvice();
+    if (!advice) return;
+    var upRank = state.dealer.cards[0].rank;
+    state.stats.strategyDecisions++;
+    if (action === advice.action) { state.stats.strategyCorrect++; return; }
+    if (state.settings.coach === "off") return;
+    toastKey("coachMiss", "coach", {
+      play: function () { return t(advice.action); },
+      situation: function () { return coachSituation(advice, upRank); }
+    });
+  }
+
+  // Returns true when the coach should comment; the caller words the toast so
+  // it can share it with the insurance result.
+  function judgeInsurance(taken) {
+    state.stats.strategyDecisions++;
+    if (taken === Strategy.takeInsurance()) { state.stats.strategyCorrect++; return false; }
+    return state.settings.coach !== "off";
+  }
+
+  function renderCoachHint(canAct) {
+    var pick = null;
+    if (state.settings.coach === "hints") {
+      if (state.phase === "insurance") pick = el.btn.insNo;
+      else if (canAct) {
+        var advice = strategyAdvice();
+        if (advice) pick = el.btn[advice.action];
+      }
+    }
+    [el.btn.hit, el.btn.stand, el.btn.double, el.btn.split, el.btn.surrender, el.btn.insYes, el.btn.insNo].forEach(function (button) {
+      button.classList.toggle("coach-pick", button === pick);
+    });
   }
 
   /* ---------------- Controls availability ---------------- */
@@ -1030,19 +1105,11 @@
     el.btn.hit.disabled = !canAct;
     el.btn.stand.disabled = !canAct;
 
-    var firstMove = canAct && hand.cards.length === 2 && !hand.doubled;
-    var doubleAllowed = firstMove && Rules.canDouble(hand, state.settings, handValue);
-    el.btn.double.disabled = !(doubleAllowed && canFundStake(hand.bet) && hand.bet * 2 <= Engine.MAX_WAGER);
-
-    var pairSplittable = firstMove && hand.cards.length === 2 &&
-      cardValue(hand.cards[0].rank) === cardValue(hand.cards[1].rank) &&
-      state.hands.length < state.settings.maxHands && canFundStake(hand.bet);
-    el.btn.split.disabled = !pairSplittable;
-
-    // Late surrender: only on the very first decision of a single, unsplit hand
-    var canSurrender = state.settings.surrender && canAct && state.hands.length === 1 &&
-      hand.cards.length === 2 && !hand.doubled;
-    el.btn.surrender.disabled = !canSurrender;
+    var plays = canAct ? availablePlays(hand) : { double: false, split: false, surrender: false };
+    el.btn.double.disabled = !plays.double;
+    el.btn.split.disabled = !plays.split;
+    el.btn.surrender.disabled = !plays.surrender;
+    renderCoachHint(canAct);
 
     if (p === "insurance") {
       var insuranceAmount = Math.min(Math.floor(state.hands[0].bet / 2), state.bankroll);
@@ -1396,6 +1463,8 @@
   function takeInsurance(yes) {
     if (state.phase !== "insurance") return;
     if (yes && el.btn.insYes.disabled) return;
+    var coachNote = judgeInsurance(yes);
+    if (coachNote) toastKey("coachInsurance", "coach");
     var evenMoneyOffer = state.insuranceMode === "evenMoney";
     closeInsurance();
 
@@ -1419,7 +1488,7 @@
     if (state.settings.dealerPeeks && isBlackjack(state.dealer.cards)) { return revealAndSettle(); }
     // No dealer blackjack -> insurance (if any) is lost; continue
     if (state.insurance > 0 && state.settings.dealerPeeks) {
-      toastKey("insuranceLost", "lose", { amount: state.insurance });
+      toastKey(coachNote ? "insuranceLostCoach" : "insuranceLost", "lose", { amount: state.insurance });
     }
     if (isBlackjack(state.hands[0].cards)) { return revealAndSettle(); }
     state.phase = "player";
@@ -1431,6 +1500,7 @@
   async function hit() {
     if (state.phase !== "player" || state.busy) return;
     var hand = state.hands[state.active];
+    judgeDecision("hit");
     state.busy = true;
     updateControls();          // lock the table the instant the action starts
     hand.cards.push(draw());
@@ -1455,6 +1525,7 @@
 
   async function stand() {
     if (state.phase !== "player" || state.busy) return;
+    judgeDecision("stand");
     state.hands[state.active].done = true;
     await advanceHand();
   }
@@ -1463,6 +1534,7 @@
     if (state.phase !== "player" || state.busy) return;
     var hand = state.hands[state.active];
     if (!Rules.canDouble(hand, state.settings, handValue) || !canFundStake(hand.bet) || hand.bet * 2 > Engine.MAX_WAGER) return;
+    judgeDecision("double");
     state.busy = true;
     updateControls();          // lock the table the instant the action starts
     state.bankroll -= hand.bet;
@@ -1487,6 +1559,7 @@
     if (hand.cards.length !== 2) return;
     if (cardValue(hand.cards[0].rank) !== cardValue(hand.cards[1].rank)) return;
     if (!canFundStake(hand.bet) || state.hands.length >= state.settings.maxHands) return;
+    judgeDecision("split");
 
     state.busy = true;
     updateControls();          // lock the table the instant the action starts
@@ -1536,6 +1609,7 @@
     if (state.hands.length !== 1) return;
     var hand = state.hands[0];
     if (hand.cards.length !== 2 || hand.doubled) return;
+    judgeDecision("surrender");
     hand.result = "surrender";
     hand.done = true;
     var refund = Math.floor(hand.bet / 2);
@@ -1926,6 +2000,7 @@
     });
     applyTheme();
     applyAnimationSpeed();
+    applyCoachUI();
     renderRuleProfileUI();
     renderTableRules();
     updateRuleAvailability();
@@ -1947,6 +2022,15 @@
     document.body.setAttribute("data-animation-speed", state.settings.animationSpeed);
     document.querySelectorAll("[data-set-animation]").forEach(function (button) {
       var active = button.getAttribute("data-set-animation") === state.settings.animationSpeed;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-checked", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  function applyCoachUI() {
+    document.querySelectorAll("[data-set-coach]").forEach(function (button) {
+      var active = button.getAttribute("data-set-coach") === state.settings.coach;
       button.classList.toggle("active", active);
       button.setAttribute("aria-checked", String(active));
       button.tabIndex = active ? 0 : -1;
@@ -2254,6 +2338,28 @@
         event.preventDefault();
         animationButtons[next].click();
         animationButtons[next].focus();
+      });
+    });
+    var coachButtons = [].slice.call(document.querySelectorAll("[data-set-coach]"));
+    coachButtons.forEach(function (button, index) {
+      button.addEventListener("click", function () {
+        var mode = button.getAttribute("data-set-coach");
+        if (ALLOWED_COACH_MODES.indexOf(mode) === -1) return;
+        state.settings.coach = mode;
+        persistSettings();
+        applyCoachUI();
+        updateControls();
+      });
+      button.addEventListener("keydown", function (event) {
+        var next = index;
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % coachButtons.length;
+        else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + coachButtons.length) % coachButtons.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = coachButtons.length - 1;
+        else return;
+        event.preventDefault();
+        coachButtons[next].click();
+        coachButtons[next].focus();
       });
     });
     // Deposit: load any amount onto the balance (replaces the old hard reset).

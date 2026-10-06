@@ -24,6 +24,7 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 - **Visible table conditions**: a quiet plaque shows the table limits, number of decks, active S17/H17 dealer rule, and selected table profile. Short landscape layouts simplify or hide it to keep the cards and controls clear; the full rules remain available in settings.
 - **Living table**: restrained dealer status lines react to each hand, progressively growing high-limit chip piles remain readable at large values, and Fast, Normal, or Cinematic animation pacing is available.
 - **Insurance, done right**: the offer takes over the controls, not a checkbox and not a pop-up over the cards, so both hands stay readable while you decide.
+- **Strategy coach**: optional basic-strategy coaching for the active rules (1, 2 or 4+ decks, S17/H17, double after split, late surrender, no-hole-card European play). *Feedback* names the better play after a different one, *Hints* also marks it on the buttons, and the statistics track your strategy accuracy either way. Insurance and even money are always declined.
 - **Table-true reading**: live soft hands show both counts (`7/17`, a dealer Ace shows `1/11`), the double-down card lies sideways, and each round ends with one clear verdict badge carrying the net amount.
 - **Sincere, rotating moments**: bust out and the house re-stakes you with a different friendly line each time.
 - **Professional local sound**: eight bundled OGG samples cover card slides, the hole-card flip, chips, payouts, and shuffling. A restrained Web Audio fallback remains available. Master, card, chip, and table-effect levels can be adjusted independently and saved locally.
@@ -42,15 +43,15 @@ The core test suite uses only Node's built-in test runner; there is nothing to i
 node --test tests
 ```
 
-The suite currently executes **421 deterministic cases**. It covers exhaustive hand and payout matrices, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
+The suite currently executes **471 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
 
-Include the additional behavior regressions for **456 Node tests** (`npm test` runs the same command):
+Include the additional behavior regressions for **506 Node tests** (`npm test` runs the same command):
 
 ```bash
 node --test tests audits/2026-09-24/behavior.test.cjs
 ```
 
-The optional real-browser suite adds **141 Chromium tests**, including `file://` play, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **145 Chromium tests**, including `file://` play, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
@@ -67,6 +68,7 @@ js/sound.js        local sample playback + Web Audio fallback
 js/engine.js       pure, dependency-free rules and payout engine
 js/rules.js        table profiles and profile-specific action rules
 js/chip-stack.js   scalable high-limit bet-pile model
+js/strategy.js     pure basic-strategy charts for the coach
 js/game.js         game state, betting, rendering, and interactions
 js/pwa.js          optional service-worker registration and safe updates
 manifest.json     installable PWA metadata
@@ -91,6 +93,7 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - **Las Vegas, Atlantic City ve European** masa profilleri dağıtım, kapalı kart, peek, double, surrender ve split kurallarını birlikte değiştirir.
 - **Hit, Stand, Double, Split, Surrender, Insurance**, garantili ödeme (even money) ve Rebet bulunur; Blackjack **3:2** öder.
 - Yumuşak eller karar sürerken iki değeriyle gösterilir (`7/17`, krupiyenin As'ı `1/11`). Double kartı yan yatırılır. Sigorta teklifi kartların üstünü değil kontrol alanını kaplar. El sonunda net tutarı da gösteren tek bir sonuç rozeti çıkar.
+- İsteğe bağlı **strateji koçu** etkin masa kurallarına göre temel stratejiyi bilir. *Uyarı* modu farklı bir hamleden sonra doğrusunu söyler, *İpucu* modu ayrıca doğru butonu işaretler. İstatistiklerde strateji doğruluğu yüzdesi tutulur.
 - Dil ve üç masa/kart arkası temasından seçiminiz tarayıcıya kaydedilir ve her açılışta hatırlanır.
 - Kartlar pabuçtan çıkar, seçili kurala göre kapalı kart fiziksel olarak açılır ve el bitince ıskarta tepsisine gider. Her split eli kendi gerçek jeton yığınına sahiptir; double olduğunda ilgili yığın büyür, ödeme ve toplama her el için ayrı yapılır.
 - Masa plakası limitleri, deste sayısını, S17/H17 kuralını ve etkin masa profilini gösterir. Kısa yatay ekranlarda kartlarla çakışmaması için sadeleşir veya gizlenir; tüm kurallar ayarlardan okunabilir.
@@ -101,4 +104,4 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Harici istek, paket veya CDN yoktur; `file://` kullanımı testlerle korunur.
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **597 test geçti** (456 Node + 141 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- Son doğrulamada **651 test geçti** (506 Node + 145 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
