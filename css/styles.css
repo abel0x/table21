@@ -707,6 +707,28 @@ body {
   white-space: nowrap;
 }
 .hand-tag .htag-bet { color: var(--gold-bright); font-weight: 700; }
+.hand-tag .htag-score.bust { color: var(--bad); }
+/* Split hands: total and stake on one line, the hand's net result below. A
+   grid (not a wrapping flexbox) keeps the tag only as wide as its longest line. */
+.hands-row:not(.hand-count-1) .hand-tag {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-items: center;
+  column-gap: 6px;
+  row-gap: 0;
+  padding: 2px 8px;
+  line-height: 1.3;
+}
+.hands-row:not(.hand-count-1) .htag-res { grid-column: 1 / -1; }
+.hands-row:not(.hand-count-1) .htag-hand,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .hand-tag .htag-res { font-weight: 700; }
 .hand-tag .htag-res.win { color: var(--good); }
 .hand-tag .htag-res.lose { color: var(--bad); }
@@ -735,6 +757,16 @@ body {
 .player-hand .hand .card.double-card {
   transform-origin: center center;
   margin-left: calc(var(--w) * .02);
+  margin-right: calc(var(--w) * .2);
+}
+/* Three or four hands (and two on the narrowest phones) cannot afford the
+   extra width, so the double card lies across the lower half of the first two
+   cards, centred on them, leaving their corner indices readable. With the
+   usual 20px fan the centring margin is -(3w - 20px) / 2. */
+.hand-count-3 .hand .card.double-card,
+.hand-count-4 .hand .card.double-card {
+  --double-lift: calc(var(--w) * .26);
+  margin-left: calc((var(--w) * -3 + 20px) / 2);
   margin-right: calc(var(--w) * .2);
 }
 #dealerHand .card { transition: margin-left .28s ease, z-index 0s; }
@@ -1372,6 +1404,12 @@ html[lang="tr"] .result-badge.lose {
   font-variant-numeric: tabular-nums;
 }
 .table-profile-spec strong { color: rgba(232,202,125,.95); }
+/* Split hands need the whole lower felt; the plaque returns with the next round
+   and the full rules stay in settings. */
+.table-specs { transition: opacity .25s ease, visibility .25s; }
+body[data-hands="2"] .table-specs,
+body[data-hands="3"] .table-specs,
+body[data-hands="4"] .table-specs { opacity: 0; visibility: hidden; }
 
 /* ----------------------- Bet spot ----------------------- */
 .bet-spot {
@@ -2489,15 +2527,21 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   .hand-count-3,
   .hand-count-4 { gap: 2px; }
   .hand-count-3 .player-hand,
-  .hand-count-4 .player-hand { padding: 3px; gap: 5px; min-width: 0; }
+  .hand-count-4 .player-hand { padding: 3px; gap: 2px; min-width: 0; }
   .hand-count-3 .card,
   .hand-count-4 .card { --w: 40px; }
   .hand-count-3 .hand .card:not(:first-child),
   .hand-count-4 .hand .card:not(:first-child) { margin-left: -34px; }
-  .hand-count-3 .hand-tag,
-  .hand-count-4 .hand-tag {
-    flex-direction: column;
-    gap: 1px;
+  .hand-count-3 .hand .card.double-card,
+  .hand-count-4 .hand .card.double-card { margin-left: calc((var(--w) * -3 + 34px) / 2); }
+  /* Narrow rows keep tags to two short lines: once settled, the net result
+     takes the stake's place. */
+  .hands-row.hand-count-3 .hand-tag:has(.htag-res) .htag-bet,
+  .hands-row.hand-count-4 .hand-tag:has(.htag-res) .htag-bet { display: none; }
+  .hands-row.hand-count-3 .hand-tag,
+  .hands-row.hand-count-4 .hand-tag {
+    grid-template-columns: auto;
+    gap: 0;
     padding: 2px 4px;
     font-size: 9px;
     line-height: 1.05;
@@ -2505,15 +2549,15 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   }
   .hand-count-3 .hand-footer,
   .hand-count-4 .hand-footer {
-    min-height: 52px;
+    min-height: 48px;
     flex-direction: column;
-    gap: 1px;
+    gap: 0;
   }
   .hand-count-3 .hand-wager,
   .hand-count-4 .hand-wager {
-    flex-basis: 30px;
+    flex-basis: 26px;
     width: 42px;
-    height: 30px;
+    height: 26px;
   }
   .hand-count-3 .hand-wager .hand-bet-stack,
   .hand-count-3 .hand-wager .hand-payout-stack,
@@ -2537,6 +2581,13 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   }
   .hand-count-3 .hand-wager .pile-row,
   .hand-count-4 .hand-wager .pile-row { gap: 2px; }
+}
+
+/* Portrait tablets: a centred hand reaches the full plaque, so keep the two
+   cells that matter during play; limits and shoe size remain in settings. */
+@media (max-width: 900px) {
+  .table-spec:nth-child(1),
+  .table-spec:nth-child(3) { display: none; }
 }
 
 @media (max-width: 420px) {
@@ -2599,6 +2650,16 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   #soundToggle { display: none; }
   .chips-tray { gap: 4px; padding: 7px 8px; }
   .chip { --size: 42px; }
+  .hand-count-2 .hand .card.double-card {
+    --double-lift: calc(var(--w) * .26);
+    margin-left: calc((var(--w) * -3 + 20px) / 2);
+  }
+  .hand-count-3 .card,
+  .hand-count-4 .card { --w: 34px; }
+  .hand-count-3 .hand .card:not(:first-child),
+  .hand-count-4 .hand .card:not(:first-child) { margin-left: -28px; }
+  .hand-count-3 .hand .card.double-card,
+  .hand-count-4 .hand .card.double-card { margin-left: calc((var(--w) * -3 + 28px) / 2); }
 }
 
 /* Short viewports (landscape phones, small laptops): trim further to avoid scroll */
@@ -2651,8 +2712,12 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   .btn-action { min-width: 0; flex: 0 0 auto; }
   .hand-count-3 .hand-footer, .hand-count-4 .hand-footer { min-height: 32px; flex-direction: row; gap: 3px; }
   .hand-count-3 .hand-wager, .hand-count-4 .hand-wager { flex-basis: 30px; width: 30px; }
-  body[data-hands="3"] .table-specs, body[data-hands="4"] .table-specs { display: none; }
-  body[data-hands="3"] .table-center, body[data-hands="4"] .table-center { left: auto; right: 6px; width: 17%; }
+  /* Three or four hands span the felt: lift them off the curved bottom rail,
+     and let the active-hand highlight speak for the banner, which stays
+     available to screen readers. */
+  body[data-hands="3"] .table-felt, body[data-hands="4"] .table-felt { justify-content: space-evenly; }
+  .hands-row.hand-count-4 { gap: 4px; }
+  body[data-hands="3"] .banner, body[data-hands="4"] .banner { opacity: 0; }
   body[data-phase="betting"] .btn-action { display: none; }
   body:not([data-phase="betting"]) .btn-bet-control,
   body:not([data-phase="betting"]) .chips-tray { display: none; }
@@ -2672,6 +2737,7 @@ body[data-animation-speed="cinematic"] .ins-panel { animation-duration: .47s; }
   .balance-label { display: none; }
   .icon-btn { width: 36px; height: 36px; }
   .lang-btn { padding-block: 5px; }
+  .hand-count-4 .card { --w: clamp(40px, 12vh, 54px); }
   .card { --w: clamp(42px, 13vh, 60px); }
   .controls { flex-direction: row; justify-content: center; gap: 10px; }
   .chips-tray { flex-wrap: nowrap; gap: 6px; padding: 3px 8px; }

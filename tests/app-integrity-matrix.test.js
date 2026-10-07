@@ -281,7 +281,8 @@ test("per-hand high-limit stacks use a narrow row contract", function () {
 
 test("split twenty-one is not presented as a natural blackjack", function () {
   var game = read("js/game.js");
-  assert.match(game, /naturalBlackjack = state\.hands\.length === 1 && !hand\.fromSplit && isBlackjack\(hand\.cards\)/);
+  assert.match(game, /var split = state\.hands\.length > 1;/);
+  assert.match(game, /naturalBlackjack = !split && !hand\.fromSplit && isBlackjack\(hand\.cards\)/);
   assert.match(game, /!state\.hands\[0\]\.fromSplit && isBlackjack\(state\.hands\[0\]\.cards\)/);
 });
 

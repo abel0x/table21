@@ -58,6 +58,22 @@ async function scene(options, run) {
     // BiDi also invokes preloads in the initial, origin-less document.
     if (!["file:", "http:", "https:"].includes(location.protocol)) return;
     if (config.noLocks) Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+    if (config.holdTimers) {
+      // Lets a test pause the table mid-round: callbacks that come due while
+      // held are parked and run, in order, once released.
+      const nativeSetTimeout = window.setTimeout.bind(window);
+      const parked = [];
+      let held = false;
+      window.setTimeout = function (callback, ms, ...args) {
+        if (typeof callback !== "function") return nativeSetTimeout(callback, ms, ...args);
+        const run = () => { if (held) parked.push(run); else callback(...args); };
+        return nativeSetTimeout(run, ms);
+      };
+      window.holdTableTimers = value => {
+        held = value;
+        if (!held) parked.splice(0).forEach(run => nativeSetTimeout(run, 0));
+      };
+    }
     if (!sessionStorage.getItem("audit.initialized")) {
       localStorage.clear();
       localStorage.setItem("vbj.bankroll", JSON.stringify(config.bankroll == null ? 10000 : config.bankroll));
@@ -449,9 +465,11 @@ test("four split hands fit the shortest landscape table and remain playable", as
     assert.deepEqual(clipped, []);
     const coversHands = await page.evaluate(() => {
       const hands = [...document.querySelectorAll(".card, .hand-tag, .hand-wager")].map(node => node.getBoundingClientRect());
-      return [...document.querySelectorAll(".table-specs, .table-center")].filter(node => {
+      // Only what is actually painted can cover a hand (both yield to split rows).
+      const shown = node => { for (let item = node; item && item !== document.body; item = item.parentElement) { const s = getComputedStyle(item); if (s.display === "none" || s.visibility === "hidden" || Number(s.opacity) < .05) return false; } return true; };
+      return [...document.querySelectorAll(".table-specs, .banner")].filter(node => {
         const box = node.getBoundingClientRect();
-        return box.width > 0 && box.height > 0 && hands.some(hand => box.left < hand.right && box.right > hand.left && box.top < hand.bottom && box.bottom > hand.top);
+        return shown(node) && box.width > 0 && box.height > 0 && hands.some(hand => box.left < hand.right && box.right > hand.left && box.top < hand.bottom && box.bottom > hand.top);
       }).map(node => node.className);
     });
     assert.deepEqual(coversHands, []);
@@ -546,3 +564,127 @@ test("coach off never interrupts but the accuracy statistic still counts", async
     assert.equal(await page.$eval('[data-set-coach="off"]', node => node.getAttribute("aria-checked")), "true");
   });
 });
+
+// Split layouts (added 2026-10-07). Two to four doubled hands, one of them bust
+// so the longest Turkish labels appear, must stay inside the felt's oval and
+// clear of the rules plaque, the banner, the dealer's side and each other,
+// from small phones to desktop. The 24 September suite only checked four
+// undoubled hands at 568x320, where the plaque is hidden anyway.
+const LAYOUT_VIEWPORTS = [
+  [1440, 900], [1280, 800], [1024, 768], [768, 1024], [932, 430], [844, 390],
+  [740, 360], [667, 375], [568, 320], [390, 844], [360, 640], [320, 568]
+];
+const SPLIT_SHOES = {
+  1: ["10", "6", "3", "10", "K"],
+  2: ["8", "6", "8", "10", "5", "10", "2", "9", "10"],
+  3: ["8", "6", "8", "10", "8", "3", "10", "5", "10", "2", "9", "10"],
+  4: ["8", "6", "8", "10", "8", "8", "3", "10", "5", "10", "2", "9", "4", "K", "10"]
+};
+
+// Runs in the page. Returns readable descriptions of every layout collision.
+function splitLayoutProblems() {
+  const felt = document.querySelector(".table-felt");
+  const box = felt.getBoundingClientRect();
+  const style = getComputedStyle(felt);
+  const border = side => parseFloat(style["border" + side + "Width"]) || 0;
+  const pad = { left: box.left + border("Left"), right: box.right - border("Right"), top: box.top + border("Top"), bottom: box.bottom - border("Bottom") };
+  // overflow: hidden clips to the padding box with the border radii reduced by the border.
+  const radius = (corner, xSide, ySide) => {
+    const parts = style["border" + corner + "Radius"].split(" ");
+    const length = (part, size) => part.endsWith("%") ? parseFloat(part) / 100 * size : parseFloat(part);
+    return { rx: Math.max(1, length(parts[0], box.width) - border(xSide)), ry: Math.max(1, length(parts[1] || parts[0], box.height) - border(ySide)) };
+  };
+  const tl = radius("TopLeft", "Left", "Top"), tr = radius("TopRight", "Right", "Top");
+  const br = radius("BottomRight", "Right", "Bottom"), bl = radius("BottomLeft", "Left", "Bottom");
+  const beyond = (x, y, cx, cy, r) => ((x - cx) / r.rx) ** 2 + ((y - cy) / r.ry) ** 2 > 1;
+  const inside = (x, y) => {
+    if (x < pad.left || x > pad.right || y < pad.top || y > pad.bottom) return false;
+    if (x < pad.left + tl.rx && y < pad.top + tl.ry && beyond(x, y, pad.left + tl.rx, pad.top + tl.ry, tl)) return false;
+    if (x > pad.right - tr.rx && y < pad.top + tr.ry && beyond(x, y, pad.right - tr.rx, pad.top + tr.ry, tr)) return false;
+    if (x > pad.right - br.rx && y > pad.bottom - br.ry && beyond(x, y, pad.right - br.rx, pad.bottom - br.ry, br)) return false;
+    if (x < pad.left + bl.rx && y > pad.bottom - bl.ry && beyond(x, y, pad.left + bl.rx, pad.bottom - bl.ry, bl)) return false;
+    return true;
+  };
+  const shown = node => {
+    for (let item = node; item && item !== document.body; item = item.parentElement) {
+      const s = getComputedStyle(item);
+      if (s.display === "none" || s.visibility === "hidden" || Number(s.opacity) < .05) return false;
+    }
+    const r = node.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  };
+  const overlap = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+  const kind = node => node.classList.contains("card") ? "card" : node.classList.contains("hand-tag") ? "tag" : "wager";
+  const problems = [];
+  const hands = [...document.querySelectorAll("#playerHands .player-hand")];
+  const parts = hands.flatMap((hand, index) => [...hand.querySelectorAll(".card, .hand-tag, .hand-wager")].map(node => ({ node, index, rect: node.getBoundingClientRect(), name: "hand " + (index + 1) + " " + kind(node) })));
+  parts.forEach(part => {
+    const inset = Math.min(4, part.rect.width / 4, part.rect.height / 4);
+    const { left, right, top, bottom } = part.rect;
+    if (![[left + inset, top + inset], [right - inset, top + inset], [right - inset, bottom - inset], [left + inset, bottom - inset]].every(([x, y]) => inside(x, y))) problems.push("outside felt: " + part.name);
+    hands.forEach((other, index) => { if (index !== part.index && overlap(part.rect, other.getBoundingClientRect())) problems.push(part.name + " enters hand " + (index + 1)); });
+  });
+  const obstacles = [".table-specs", ".banner", ".dealer-plate", "#dealerHand .card", ".discard-tray", ".shoe"];
+  obstacles.forEach(selector => document.querySelectorAll(selector).forEach(node => {
+    if (!shown(node)) return;
+    const rect = node.getBoundingClientRect();
+    parts.forEach(part => { if (overlap(rect, part.rect)) problems.push(selector + " covers " + part.name); });
+  }));
+  if (document.documentElement.scrollWidth > innerWidth + 1) problems.push("horizontal scroll");
+  if (document.documentElement.scrollHeight > innerHeight * 1.25) problems.push("page " + document.documentElement.scrollHeight + "px tall");
+  return [...new Set(problems)];
+}
+
+async function sweepLayouts(page, moment) {
+  const found = [];
+  for (const [width, height] of LAYOUT_VIEWPORTS) {
+    await page.setViewport({ width, height });
+    // The resize reaches the renderer asynchronously and the layout can take a
+    // few frames to settle; measure only once it has stopped moving.
+    await page.waitForFunction((w, h) => innerWidth === w && innerHeight === h, {}, width, height);
+    // Emulated resizes can show one frame of new widths with old viewport units.
+    await new Promise(resolve => setTimeout(resolve, 80));
+    await page.evaluate(() => { window.layoutKey = ""; window.layoutStill = 0; });
+    await page.waitForFunction(() => {
+      const key = [".table-felt", ".controls", "#playerHands"].map(selector => {
+        const r = document.querySelector(selector).getBoundingClientRect();
+        return [r.left, r.top, r.width, r.height].map(Math.round).join(",");
+      }).join("|") + "|" + document.documentElement.scrollHeight;
+      window.layoutStill = key === window.layoutKey ? window.layoutStill + 1 : 0;
+      window.layoutKey = key;
+      return window.layoutStill >= 3;
+    }, { polling: "raf", timeout: 3000 });
+    for (const problem of await page.evaluate(splitLayoutProblems)) found.push(width + "x" + height + " " + moment + ": " + problem);
+  }
+  return found;
+}
+
+for (const count of [1, 2, 3, 4]) {
+  test(count + " doubled hand" + (count > 1 ? "s" : "") + " stay inside the felt and clear of the table furniture at every size", async () => {
+    await scene({ lang: "tr", holdTimers: true, draw: SPLIT_SHOES[count] }, async page => {
+      const ready = () => page.waitForFunction(() => document.body.dataset.phase === "player" && document.body.dataset.busy === "false");
+      await deal(page); await ready();
+      for (let hands = 2; hands <= count; hands++) {
+        await page.click("#btnSplit");
+        await page.waitForFunction(n => document.querySelectorAll(".player-hand").length === n && document.body.dataset.busy === "false", {}, hands);
+      }
+      for (let doubled = 1; doubled < count; doubled++) { await ready(); await page.click("#btnDouble"); }
+      await ready();
+      const problems = await sweepLayouts(page, "decision");
+      await page.setViewport({ width: 1280, height: 900 });
+      // Freeze the table the instant it settles, so results stay on the felt while measured.
+      await page.evaluate(() => new MutationObserver((records, observer) => {
+        if (document.body.dataset.phase !== "payout") return;
+        window.holdTableTimers(true);
+        observer.disconnect();
+      }).observe(document.body, { attributes: true, attributeFilter: ["data-phase"] }));
+      await page.click("#btnDouble");
+      await phase(page, "payout");
+      assert.equal(await page.$$eval(".double-card", nodes => nodes.length), count);
+      problems.push(...await sweepLayouts(page, "payout"));
+      await page.evaluate(() => window.holdTableTimers(false));
+      await phase(page, "betting");
+      assert.deepEqual(problems, []);
+    });
+  });
+}

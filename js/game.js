@@ -627,15 +627,22 @@
     return state.phase !== "dealer" && state.phase !== "payout" && !hand.done && !hand.result;
   }
 
+  // Tags stay compact: a bust shows its red total (the centre badge says
+  // "bust"), and a single hand's result is the badge's job. Split hands add
+  // their own net result after settlement, which the badge's round total
+  // cannot show. "Hand 2" stays in the text for assistive technology only.
   function renderHandTag(tag, hand, idx) {
     var v = handValue(hand.cards);
-    var label = state.hands.length > 1 ? (t("handLabel") + " " + (idx + 1) + " · ") : "";
-    var naturalBlackjack = state.hands.length === 1 && !hand.fromSplit && isBlackjack(hand.cards);
-    var scoreTxt = v.total > 21 ? t("bustShort") : (naturalBlackjack ? "BJ" : Engine.totalLabel(hand.cards, handIsLive(hand)));
-    tag.innerHTML = '<span>' + label + scoreTxt + '</span><span class="htag-bet">$' + fmt(hand.bet) + '</span>';
-    if (hand.result) {
-      var rcls = handReturnsWager(hand.result) && hand.result !== "push" ? "win" : (hand.result === "push" ? "" : "lose");
-      tag.innerHTML += '<span class="htag-res ' + rcls + '">' + resultShort(hand.result) + '</span>';
+    var split = state.hands.length > 1;
+    var naturalBlackjack = !split && !hand.fromSplit && isBlackjack(hand.cards);
+    var bust = v.total > 21;
+    var scoreTxt = bust ? String(v.total) : (naturalBlackjack ? "BJ" : Engine.totalLabel(hand.cards, handIsLive(hand)));
+    tag.innerHTML = (split ? '<span class="htag-hand">' + t("handLabel") + " " + (idx + 1) + ' · </span>' : "") +
+      '<span class="htag-score' + (bust ? " bust" : "") + '">' + scoreTxt + '</span><span class="htag-bet">$' + fmt(hand.bet) + '</span>';
+    if (split && hand.result) {
+      var net = payoutFor(hand.result, hand.bet) - hand.bet;
+      tag.innerHTML += '<span class="htag-res' + (net > 0 ? " win" : (net < 0 ? " lose" : "")) + '">' +
+        (net ? signedMoney(net) : t("pushShort")) + '</span>';
     }
   }
 
@@ -679,10 +686,11 @@
         var animate = !c._shown; c._shown = true;
         var ce = cardEl(c, false, animate);
         // The double-down card lies sideways, as dealt at a real table.
+        // Crowded layouts lower it across the hand through --double-lift.
         if (hand.doubled && cardIndex === 2) {
           ce.classList.add("double-card");
           ce.style.setProperty("--card-turn", "90deg");
-          ce.style.setProperty("--card-lift", "0px");
+          ce.style.setProperty("--card-lift", "var(--double-lift, 0px)");
         }
         if (hand.result === "win" || hand.result === "blackjack" || hand.result === "evenMoney" || hand.result === "dealerBust") {
           ce.classList.add("win-glow");
@@ -733,20 +741,6 @@
         (hv.total > 21 ? " bust" : (!state.hands[0].fromSplit && isBlackjack(state.hands[0].cards) ? " bj" : ""));
     } else {
       el.playerScore.textContent = "";
-    }
-  }
-
-  function resultShort(r) {
-    switch (r) {
-      case "blackjack": return t("bjShort");
-      case "evenMoney": return t("evenMoneyShort");
-      case "win":
-      case "dealerBust": return t("youWin");
-      case "push": return t("pushShort");
-      case "bust":
-      case "lose": return t("youLose");
-      case "surrender": return "½";
-      default: return "";
     }
   }
 
