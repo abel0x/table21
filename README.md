@@ -46,7 +46,7 @@ node --test tests        # same as: npm test
 
 The suite currently executes **546 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
 
-The optional real-browser suite adds **159 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **160 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
@@ -104,4 +104,4 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
 - Yarım kalan el; sayfa yenilense, tarayıcı çökse ya da sekme kapansa bile aynı kartlarla ve masadaki bahisle kaldığı yerden devam eder. Yenilemek kötü giden bir eli geri almaz; güvenilmeyen bir kayıt eli iptal eder ve bahsi iade eder.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **705 test geçti** (546 Node + 159 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- Son doğrulamada **706 test geçti** (546 Node + 160 Chromium). Aynı tarayıcı paketi Firefox 157'de de çalıştırıldı; dört öykünme testi BiDi bağdaştırıcısında desteklenmediği için atlandı, kalanların hiçbiri başarısız olmadı. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).

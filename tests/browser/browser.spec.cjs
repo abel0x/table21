@@ -851,3 +851,18 @@ test("a deposit made while a hand waits in a closed tab is kept when the hand re
     } finally { await second.close(); }
   });
 });
+
+test("without cross-tab locks a reload resumes the hand from the session account", async () => {
+  await scene({ noLocks: true, draw: ["10", "9", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    assert.ok(await page.evaluate(() => sessionStorage.getItem("table21.session.vbj.round")));
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.round")), null);
+    await reloadTable(page); await phase(page, "player");
+    assert.equal(await page.$eval("#bankroll", node => node.textContent), "9,900");
+    assert.equal(await page.$eval("#bannerText", node => node.getAttribute("data-i18n")), "yourTurn");
+    await new Promise(resolve => setTimeout(resolve, 700));
+    assert.equal(await page.$eval("#dealerLine", node => node.getAttribute("data-i18n-pick")), null);
+    await page.click("#btnStand"); await phase(page, "betting");
+    assert.equal(await page.evaluate(() => sessionStorage.getItem("table21.session.vbj.bankroll")), "9900");
+  });
+});

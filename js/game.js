@@ -2523,8 +2523,10 @@
       }
     });
 
-    setBannerKey("placeBetPrompt");
-    setTimeout(function () { dealerSay("sayWelcome"); }, 600);
+    // A resumed hand is already in play (without Web Locks it resumes
+    // synchronously above); the prompt and welcome belong to an empty table.
+    if (state.phase === "betting") setBannerKey("placeBetPrompt");
+    setTimeout(function () { if (state.phase === "betting") dealerSay("sayWelcome"); }, 600);
   }
 
   if (document.readyState === "loading") {
