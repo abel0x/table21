@@ -25,6 +25,9 @@
     chipsPush: "assets/audio/chips-push.ogg",
     shuffle: "assets/audio/shuffle.ogg"
   };
+  // Each sample also ships as AAC (.m4a) for Safari versions that cannot play
+  // Ogg. The browser's own canPlayType decides once, on first use.
+  var sampleExtension = null;
   var sampleTemplates = {};
   var activeSamples = [];
   var sampleTurn = 0;
@@ -45,12 +48,25 @@
     return result;
   }
 
+  function sampleFormat() {
+    if (sampleExtension) return sampleExtension;
+    sampleExtension = ".ogg";
+    try {
+      var probe = new global.Audio();
+      if (typeof probe.canPlayType === "function" &&
+          !probe.canPlayType('audio/ogg; codecs="vorbis"') &&
+          probe.canPlayType('audio/mp4; codecs="mp4a.40.2"')) sampleExtension = ".m4a";
+    } catch (e) {}
+    return sampleExtension;
+  }
+
   function preloadSamples() {
     if (typeof global.Audio !== "function") return;
+    var extension = sampleFormat();
     Object.keys(SAMPLE_PATHS).forEach(function (name) {
       if (sampleTemplates[name]) return;
       try {
-        var audio = new global.Audio(SAMPLE_PATHS[name]);
+        var audio = new global.Audio(SAMPLE_PATHS[name].replace(/\.ogg$/, extension));
         audio.preload = "auto";
         sampleTemplates[name] = audio;
       } catch (e) {}

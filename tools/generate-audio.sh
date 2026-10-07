@@ -54,4 +54,11 @@ ffmpeg -hide_banner -loglevel error -y \
   -filter_complex "[0:a]highpass=f=620,lowpass=f=5600,tremolo=f=11:d=0.72,volume=0.2[paper];[1:a]highpass=f=100,lowpass=f=900,tremolo=f=6:d=0.55,volume=0.14[body];[paper][body]amix=inputs=2:normalize=0,afade=t=in:st=0:d=0.03,afade=t=out:st=0.58:d=0.18" \
   -ar 44100 -ac 1 -c:a libvorbis -q:a 3 "$audio_dir/shuffle.ogg"
 
+# Safari has long been unable to play Ogg; mirror every sample as AAC (.m4a).
+# js/sound.js asks the browser (canPlayType) which of the two to use.
+for ogg in "$audio_dir"/*.ogg; do
+  ffmpeg -hide_banner -loglevel error -y -i "$ogg" \
+    -ar 44100 -ac 1 -c:a aac -b:a 96k -movflags +faststart "${ogg%.ogg}.m4a"
+done
+
 printf 'Generated local table audio in %s\n' "$audio_dir"

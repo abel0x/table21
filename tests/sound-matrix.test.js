@@ -8,7 +8,7 @@ var vm = require("node:vm");
 
 var source = fs.readFileSync(path.resolve(__dirname, "../js/sound.js"), "utf8");
 
-function loadWithAudio() {
+function loadWithAudio(playable) {
   var templates = [];
   var played = [];
   function MockAudio(src) {
@@ -33,6 +33,9 @@ function loadWithAudio() {
     return Promise.resolve();
   };
   MockAudio.prototype.pause = function () { this.paused = true; };
+  if (playable) {
+    MockAudio.prototype.canPlayType = function (type) { return playable(type) ? "maybe" : ""; };
+  }
 
   var context = { Audio: MockAudio };
   context.window = context;
@@ -163,5 +166,22 @@ test("sample playback rates remain in the safe range", function () {
   loaded.played.forEach(function (sample) {
     assert.ok(sample.playbackRate >= 0.8);
     assert.ok(sample.playbackRate <= 1.2);
+  });
+});
+
+[
+  ["a browser without Ogg but with AAC (Safari) gets the .m4a twins", function (type) { return /mp4/.test(type); }, /\.m4a$/],
+  ["a browser with both formats keeps the Ogg samples", function () { return true; }, /\.ogg$/],
+  ["a browser that plays neither keeps Ogg and relies on the synthesized fallback", function () { return false; }, /\.ogg$/],
+  ["a browser without canPlayType keeps Ogg", null, /\.ogg$/]
+].forEach(function (entry) {
+  test("sample format: " + entry[0], function () {
+    var loaded = loadWithAudio(entry[1]);
+    loaded.Sound.card();
+    loaded.Sound.chip(0);
+    assert.equal(loaded.played.length, 2);
+    loaded.played.forEach(function (audio) { assert.match(audio.src, entry[2]); });
+    assert.equal(loaded.templates.length, 8);
+    loaded.templates.forEach(function (audio) { assert.match(audio.src, entry[2]); });
   });
 });

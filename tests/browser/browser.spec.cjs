@@ -23,7 +23,7 @@ test.before(async () => {
     try {
       let body = fs.readFileSync(file);
       if (relative === "sw.js") body = Buffer.from(body.toString().replace(/vbj-v\d+/, "vbj-audit-" + workerRevision));
-      const mime = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".ogg": "audio/ogg", ".woff2": "font/woff2" }[path.extname(file)] || "application/octet-stream";
+      const mime = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".png": "image/png", ".woff2": "font/woff2" }[path.extname(file)] || "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Cache-Control": "no-store" }).end(body);
     } catch { response.writeHead(404).end(); }
   });
@@ -688,3 +688,28 @@ for (const count of [1, 2, 3, 4]) {
     });
   });
 }
+
+// Safari audio (added 2026-10-07): a browser that cannot play Ogg loads and
+// plays the bundled AAC twins instead of falling back to synthesized cues.
+test("a browser without Ogg support plays the bundled AAC samples", async () => {
+  await scene({ web: true }, async page => {
+    await page.evaluate(() => {
+      HTMLMediaElement.prototype.canPlayType = type => /ogg/.test(type) ? "" : "probably";
+      const NativeAudio = window.Audio;
+      window.audioElements = [];
+      window.Audio = function (src) { const audio = new NativeAudio(src); window.audioElements.push(audio); return audio; };
+    });
+    await page.click("#soundToggle");
+    await page.click('.chip[data-value="100"]');
+    const sources = await page.evaluate(() => window.audioElements.filter(audio => audio.src).map(audio => audio.src.split("/").pop()));
+    assert.equal(sources.length >= 8, true, JSON.stringify(sources));
+    sources.forEach(source => assert.match(source, /\.m4a$/));
+    const loaded = await page.evaluate(() => Promise.all(window.audioElements.filter(audio => audio.src).map(audio => new Promise(resolve => {
+      if (audio.readyState >= 3) return resolve("ok");
+      audio.addEventListener("canplaythrough", () => resolve("ok"), { once: true });
+      audio.addEventListener("error", () => resolve("error " + audio.error.code), { once: true });
+      setTimeout(() => resolve("timeout " + audio.readyState), 4000);
+    }))));
+    assert.deepEqual([...new Set(loaded)], ["ok"]);
+  });
+});

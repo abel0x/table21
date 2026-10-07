@@ -98,8 +98,11 @@ test("all local sound references are in the offline cache", function () {
   });
   assert.equal(sounds.length, 8);
   sounds.forEach(function (sound) {
+    var aac = sound.replace(/\.ogg$/, ".m4a");
     assert.ok(fs.existsSync(path.join(root, sound)));
     assert.ok(worker.includes('"./' + sound + '"'));
+    assert.ok(fs.existsSync(path.join(root, aac)), "missing Safari twin: " + aac);
+    assert.ok(worker.includes('"./' + aac + '"'), "Safari twin is not precached: " + aac);
   });
 });
 
@@ -110,6 +113,12 @@ test("all local sound references are in the offline cache", function () {
   test("bundled audio has an Ogg container header: " + file, function () {
     var buffer = fs.readFileSync(path.join(root, "assets/audio", file));
     assert.equal(buffer.subarray(0, 4).toString("ascii"), "OggS");
+    assert.ok(buffer.length > 1024);
+  });
+  test("Safari's AAC twin has an MPEG-4 audio header: " + file.replace(/\.ogg$/, ".m4a"), function () {
+    var buffer = fs.readFileSync(path.join(root, "assets/audio", file.replace(/\.ogg$/, ".m4a")));
+    assert.equal(buffer.subarray(4, 8).toString("ascii"), "ftyp");
+    assert.equal(buffer.subarray(8, 11).toString("ascii"), "M4A");
     assert.ok(buffer.length > 1024);
   });
 });

@@ -220,7 +220,15 @@ test("bundled fonts and physical sound samples are present and precached", funct
     "assets/audio/chip-click-2.ogg",
     "assets/audio/chip-stack.ogg",
     "assets/audio/chips-push.ogg",
-    "assets/audio/shuffle.ogg"
+    "assets/audio/shuffle.ogg",
+    "assets/audio/card-slide-1.m4a",
+    "assets/audio/card-slide-2.m4a",
+    "assets/audio/card-flip.m4a",
+    "assets/audio/chip-click-1.m4a",
+    "assets/audio/chip-click-2.m4a",
+    "assets/audio/chip-stack.m4a",
+    "assets/audio/chips-push.m4a",
+    "assets/audio/shuffle.m4a"
   ];
 
   assets.forEach(function (asset) {

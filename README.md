@@ -27,7 +27,7 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 - **Strategy coach**: optional basic-strategy coaching for the active rules (1, 2 or 4+ decks, S17/H17, double after split, late surrender, no-hole-card European play). *Feedback* names the better play after a different one, *Hints* also marks it on the buttons, and the statistics track your strategy accuracy either way. Insurance and even money are always declined.
 - **Table-true reading**: live soft hands show both counts (`7/17`, a dealer Ace shows `1/11`), the double-down card lies sideways (across the hand when three or four hands crowd the felt), and each round ends with one clear verdict badge carrying the net amount. Split hands keep compact tags with their own net result, and the rules plaque steps aside while they share the felt.
 - **Sincere, rotating moments**: bust out and the house re-stakes you with a different friendly line each time.
-- **Professional local sound**: eight bundled OGG samples cover card slides, the hole-card flip, chips, payouts, and shuffling. A restrained Web Audio fallback remains available. Master, card, chip, and table-effect levels can be adjusted independently and saved locally.
+- **Professional local sound**: eight bundled samples cover card slides, the hole-card flip, chips, payouts, and shuffling. Each ships as Ogg Vorbis and as an AAC (`.m4a`) twin for Safari versions that cannot play Ogg; the browser's `canPlayType` picks one. A restrained Web Audio fallback remains available. Master, card, chip, and table-effect levels can be adjusted independently and saved locally.
 - **Bundled typography**: the interface uses a locally packaged OFL-licensed WOFF2 family, with no font service or network dependency.
 - **Internationalisation**: **English (primary)** and **Turkish**, including felt rules, dialogs, card names for assistive technology, and number formatting. The chosen language is **saved in the browser** (`localStorage`) and restored on every visit.
 - **Persistent** bankroll, statistics (hands, wins, losses, pushes, blackjacks, win rate) and settings. Auto re‑stake when you bust out. Supporting browsers coordinate shared balances across tabs using Web Locks; without that API, each tab uses a separate session balance and displays a notice.
@@ -43,9 +43,9 @@ The core test suite uses only Node's built-in test runner; there is nothing to i
 node --test tests        # same as: npm test
 ```
 
-The suite currently executes **506 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
+The suite currently executes **518 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
 
-The optional real-browser suite adds **149 Chromium tests**, including `file://` play, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **150 Chromium tests**, including `file://` play, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
@@ -70,7 +70,7 @@ js/pwa.js          optional service-worker registration and safe updates
 manifest.json     installable PWA metadata
 sw.js              offline cache (only used when served over http)
 icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
-assets/audio/      local card, chip, payout, and shuffle sounds
+assets/audio/      local card, chip, payout, and shuffle sounds (Ogg + AAC)
 assets/fonts/      local WOFF2 interface font + OFL license
 tools/             reproducible local audio generator
 tests/             dependency-free rules, strategy, behavior and offline integrity tests
@@ -95,10 +95,10 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Kartlar pabuçtan çıkar, seçili kurala göre kapalı kart fiziksel olarak açılır ve el bitince ıskarta tepsisine gider. Her split eli kendi gerçek jeton yığınına sahiptir; double olduğunda ilgili yığın büyür, ödeme ve toplama her el için ayrı yapılır.
 - Masa plakası limitleri, deste sayısını, S17/H17 kuralını ve etkin masa profilini gösterir. Kısa yatay ekranlarda kartlarla çakışmaması için sadeleşir veya gizlenir; tüm kurallar ayarlardan okunabilir.
 - Hızlı/Normal/Sinematik animasyon temposu ile ana ses, kart, jeton ve masa efekti düzeyleri ayrı ayrı ayarlanıp tarayıcıda saklanır.
-- Kart, jeton, ödeme ve karıştırma sesleri yerel OGG dosyalarıdır. Arayüz fontu da yerel WOFF2 olarak paketlenmiştir.
+- Kart, jeton, ödeme ve karıştırma sesleri yerel OGG dosyalarıdır; OGG çalamayan Safari sürümleri için AAC (`.m4a`) kopyaları da pakettedir. Arayüz fontu da yerel WOFF2 olarak paketlenmiştir.
 - Yüksek limitli bahis yığınları miktarla beraber büyür; büyük tutarlarda kartlara taşmadan kompakt satırlara yerleşir.
 - Dokulu keçe, ahşap/pirinç masa kenarı, gerçek A–10 sembol dizilimleri, farklı Vale/Kız/Papaz figürleri, dağıtım pabucu, ıskarta tepsisi ve pürüzsüz vektör jetonlar tamamen yerel HTML/CSS/SVG ile çizilir.
 - Harici istek, paket veya CDN yoktur; `file://` kullanımı testlerle korunur.
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **655 test geçti** (506 Node + 149 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- Son doğrulamada **668 test geçti** (518 Node + 150 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
