@@ -27,8 +27,6 @@
   --felt-edge: #06251a;
   --topbar-top: rgba(6, 18, 13, .92);
   --topbar-bottom: rgba(6, 18, 13, .55);
-  --overlay-top: rgba(4, 14, 9, .55);
-  --overlay-bottom: rgba(4, 14, 9, .2);
   --surface-top: rgba(18, 42, 31, .96);
   --surface-bottom: rgba(8, 26, 18, .96);
   --tray-top: rgba(10, 25, 18, .9);
@@ -79,8 +77,6 @@ body[data-theme="midnight"] {
   --felt-edge: #041722;
   --topbar-top: rgba(5, 14, 25, .94);
   --topbar-bottom: rgba(5, 14, 25, .58);
-  --overlay-top: rgba(3, 12, 22, .58);
-  --overlay-bottom: rgba(3, 12, 22, .2);
   --surface-top: rgba(15, 36, 57, .96);
   --surface-bottom: rgba(6, 20, 34, .96);
   --tray-top: rgba(10, 29, 47, .92);
@@ -116,8 +112,6 @@ body[data-theme="bordeaux"] {
   --felt-edge: #1c070e;
   --topbar-top: rgba(27, 8, 13, .94);
   --topbar-bottom: rgba(27, 8, 13, .58);
-  --overlay-top: rgba(24, 6, 11, .58);
-  --overlay-bottom: rgba(24, 6, 11, .2);
   --surface-top: rgba(63, 27, 36, .96);
   --surface-bottom: rgba(33, 10, 17, .96);
   --tray-top: rgba(50, 19, 27, .92);

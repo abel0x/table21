@@ -40,23 +40,19 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 The core test suite uses only Node's built-in test runner; there is nothing to install:
 
 ```bash
-node --test tests
+node --test tests        # same as: npm test
 ```
 
-The suite currently executes **471 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, and the complete service-worker app shell.
-
-Include the additional behavior regressions for **506 Node tests** (`npm test` runs the same command):
-
-```bash
-node --test tests audits/2026-09-24/behavior.test.cjs
-```
+The suite currently executes **506 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
 
 The optional real-browser suite adds **145 Chromium tests**, including `file://` play, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
 npm run test:browser
-``` See the [27 September fix and verification report](audits/2026-09-27/REPORT.md) for commands, Firefox cross-checks, and coverage limits.
+```
+
+Dated reports in `audits/` record earlier findings, Firefox cross-checks and coverage limits; start with the [27 September fix and verification report](audits/2026-09-27/REPORT.md).
 
 ## Files
 
@@ -77,8 +73,9 @@ icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
 assets/audio/      local card, chip, payout, and shuffle sounds
 assets/fonts/      local WOFF2 interface font + OFL license
 tools/             reproducible local audio generator
-tests/             dependency-free rule and offline integrity tests
-audits/            dated findings and runnable behavior/browser regressions
+tests/             dependency-free rules, strategy, behavior and offline integrity tests
+tests/browser/     optional real-browser suite (Puppeteer, development only)
+audits/            dated findings and verification reports
 package.json       test scripts + dev-only Puppeteer (not needed to play)
 ```
 

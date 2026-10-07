@@ -1,13 +1,13 @@
 "use strict";
 
 // Originally added for the 24 September audit; retained as regression guards.
-// Run with node --test audits/2026-09-24/behavior.test.cjs.
+// Part of the core suite: node --test tests
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const root = path.resolve(__dirname, "../..");
+const root = path.resolve(__dirname, "..");
 const source = file => fs.readFileSync(path.join(root, file), "utf8");
 
 function engine(crypto) {

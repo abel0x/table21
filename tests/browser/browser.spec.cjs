@@ -1,7 +1,7 @@
 "use strict";
 
-// Uses an already installed Puppeteer only for auditing, never at runtime.
-// BLACKJACK_PUPPETEER_PATH=/absolute/path/to/puppeteer node --test this-file
+// Real-browser suite. Puppeteer is a development dependency only; the game never loads it.
+// npm run test:browser  (or: BLACKJACK_PUPPETEER_PATH=/absolute/path/to/puppeteer node --test this-file)
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -11,7 +11,7 @@ const http = require("node:http");
 const { pathToFileURL } = require("node:url");
 const puppeteer = require(process.env.BLACKJACK_PUPPETEER_PATH || "puppeteer");
 const root = path.resolve(__dirname, "../..");
-const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "blackjack-audit-20260924-"));
+const artifacts = fs.mkdtempSync(path.join(os.tmpdir(), "table21-browser-"));
 const isFirefox = process.env.BLACKJACK_BROWSER === "firefox";
 let browser, server, baseURL, workerRevision = 0, sceneIndex = 0;
 
