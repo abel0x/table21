@@ -14,6 +14,8 @@
   if (!BetChipStack) throw new Error("BetChipStack must load before game.js");
   var Strategy = global.BlackjackStrategy;
   if (!Strategy) throw new Error("BlackjackStrategy must load before game.js");
+  var RoundStore = global.RoundStore;
+  if (!RoundStore) throw new Error("RoundStore must load before game.js");
 
   var buildShoe = Engine.buildShoe;
   var shuffle = Engine.shuffle;
@@ -28,7 +30,8 @@
     stats: "vbj.stats",
     settings: "vbj.settings",
     sound: "vbj.sound",
-    audio: "vbj.audio"
+    audio: "vbj.audio",
+    round: "vbj.round"
   };
   function load(key, fallback) {
     try {
@@ -121,6 +124,7 @@
     dealer: { cards: [], hideHole: true },
     hands: [],              // [{cards, bet, done, doubled, splitAces, result, payoutAmount}]
     active: 0,
+    pendingDeal: [],        // opening cards already drawn, still to be laid out
     insurance: 0,
     insuranceMode: null,
     evenMoney: false,
@@ -148,6 +152,12 @@
     else {
       try { sessionStorage.setItem("table21.session." + key, JSON.stringify(value)); } catch (e) {}
     }
+  }
+  function removeAccount(key) {
+    try {
+      if (sharedAccount) localStorage.removeItem(key);
+      else sessionStorage.removeItem("table21.session." + key);
+    } catch (e) {}
   }
   function readAccountState() {
     state.bankroll = normalizeBankroll(loadAccount(KEYS.bankroll, state.bankroll));
@@ -1203,7 +1213,8 @@
   function renderShoeStatus() {
     var total = state.settings.decks * 52;
     var untouched = state.shoe.length === 0 && state.discarded === 0;
-    var remaining = untouched ? total : state.shoe.length;
+    // Opening cards drawn for the snapshot are still physically in the shoe.
+    var remaining = untouched ? total : state.shoe.length + state.pendingDeal.length;
     var fill = total ? remaining / total : 1;
     var depletion = Math.round((1 - Math.max(.08, fill)) * 24);
 
@@ -1372,6 +1383,7 @@
     bindText(el.btn.insNo, "declineOffer");
     el.insuranceOverlay.hidden = false;
     updateControls();
+    saveRound("insurance");
     setTimeout(function () { (el.btn.insYes.disabled ? el.btn.insNo : el.btn.insYes).focus(); }, 0);
   }
 
@@ -1385,6 +1397,8 @@
   }
 
   async function dealRound() {
+    // A round left unfinished by another tab or a crash is played out first.
+    if (resumeRound()) return;
     if (state.bet < MIN_BET) { toastKey("minBet", "lose"); return; }
     if (state.bet > state.bankroll) { toastKey("insufficientFunds", "lose"); return; }
     if (state.bet > wagerLimit()) { toastKey("wagerLimit", "lose", { amount: function () { return "$" + fmt(wagerLimit()); } }); return; }
@@ -1422,14 +1436,24 @@
 
     // American tables deal a hole card now. European no-hole-card tables wait
     // until every player decision is complete before taking the second card.
+    // The opening cards are fixed and saved the moment the stake is down, so a
+    // reload during the deal resumes with these exact cards.
     var hand = state.hands[0];
-    hand.cards.push(draw()); renderPlayer(); Sound.card(); await delay(440);
-    state.dealer.cards.push(draw()); renderDealer(); Sound.card(); await delay(440);
-    hand.cards.push(draw()); renderPlayer(); Sound.card(); await delay(440);
-    if (state.settings.dealerHoleCard) {
-      state.dealer.cards.push(draw()); renderDealer(); Sound.card(); await delay(520);
+    state.pendingDeal = [draw(), draw(), draw()];
+    if (state.settings.dealerHoleCard) state.pendingDeal.push(draw());
+    renderShoeStatus();
+    saveRound("deal");
+    hand.cards.push(state.pendingDeal.shift()); renderPlayer(); renderShoeStatus(); Sound.card(); await delay(440);
+    state.dealer.cards.push(state.pendingDeal.shift()); renderDealer(); renderShoeStatus(); Sound.card(); await delay(440);
+    hand.cards.push(state.pendingDeal.shift()); renderPlayer(); renderShoeStatus(); Sound.card(); await delay(440);
+    if (state.pendingDeal.length) {
+      state.dealer.cards.push(state.pendingDeal.shift()); renderDealer(); renderShoeStatus(); Sound.card(); await delay(520);
     }
+    return afterOpeningDeal();
+  }
 
+  function afterOpeningDeal() {
+    var hand = state.hands[0];
     state.busy = false;
     dealerSay("sayDeal");
 
@@ -1450,8 +1474,14 @@
 
     if (playerBJ) { return revealAndSettle(); }
 
+    awaitPlayer();
+  }
+
+  // The table waits for the player: show it and keep the round resumable.
+  function awaitPlayer() {
     state.phase = "player";
     updateControls();
+    saveRound("player");
   }
 
   function takeInsurance(yes) {
@@ -1485,8 +1515,7 @@
       toastKey(coachNote ? "insuranceLostCoach" : "insuranceLost", "lose", { amount: state.insurance });
     }
     if (isBlackjack(state.hands[0].cards)) { return revealAndSettle(); }
-    state.phase = "player";
-    updateControls();
+    awaitPlayer();
     el.btn.hit.focus();
   }
 
@@ -1513,7 +1542,7 @@
       await advanceHand();
     } else {
       state.busy = false;
-      updateControls();
+      awaitPlayer();
     }
   }
 
@@ -1593,7 +1622,7 @@
       await advanceHand();
     } else {
       renderPlayer();
-      updateControls();
+      awaitPlayer();
     }
   }
 
@@ -1614,6 +1643,7 @@
     state.stats.hands++;
     state.stats.losses++;
     persistAll();
+    clearRound();
     renderStats();
     state.phase = "payout";
     renderPlayer();
@@ -1669,7 +1699,7 @@
         state.busy = false;
       }
       renderPlayer();
-      updateControls();
+      awaitPlayer();
       return;
     }
 
@@ -1702,6 +1732,7 @@
   }
 
   async function revealAndSettle() {
+    saveRound("reveal");
     state.busy = true;
     state.phase = "dealer";
     setBannerKey("dealerTurn");
@@ -1722,6 +1753,7 @@
 
   async function dealerPlay() {
     // If every hand busted/surrendered, dealer need not draw — but still reveal.
+    saveRound("dealer");
     state.phase = "dealer";
     setBannerKey("dealerTurn");
     updateControls();
@@ -1785,6 +1817,7 @@
     renderDealer();
     renderPlayer();
     persistAll();
+    clearRound();
     renderStats();
 
     var profit = round.profit;
@@ -1980,6 +2013,81 @@
     persistSettings();
   }
 
+  /* ---------------- Unfinished rounds ---------------- */
+  // The saved balance stays the pre-round balance; the live round is saved
+  // beside it whenever the table waits for the player or hands over to the
+  // dealer. A reload, a crash or a closed tab therefore resumes the same hand,
+  // and a snapshot that cannot be trusted voids the round, returning its stake.
+  function saveRound(resume) {
+    saveAccount(KEYS.round, RoundStore.capture(state, resume, Rules.RULE_FIELDS));
+    persistStats();
+  }
+  function clearRound() {
+    removeAccount(KEYS.round);
+  }
+
+  function resumeRound() {
+    var raw = loadAccount(KEYS.round, null);
+    if (raw == null) return false;
+    var round = RoundStore.restore(raw, {
+      rules: state.settings, ruleFields: Rules.RULE_FIELDS,
+      ranks: Engine.RANKS, suits: Engine.SUITS, maxWager: Engine.MAX_WAGER
+    });
+    if (!round || round.stake > state.bankroll) {
+      clearRound();
+      toastKey("roundVoided", "");
+      return false;
+    }
+    state.bankroll -= round.stake;
+    state.bet = round.bet;
+    state.lastBet = round.lastBet;
+    state.roundStakeLimit = round.roundStakeLimit;
+    state.hands = round.hands.map(function (hand) {
+      return Object.assign(hand, { result: null, payoutAmount: 0, wagerShown: true });
+    });
+    state.active = round.active;
+    state.dealer = round.dealer;
+    state.pendingDeal = round.pending;
+    state.insurance = round.insurance;
+    state.insuranceMode = round.insuranceMode;
+    state.evenMoney = round.evenMoney;
+    state.shoe = round.shoe;
+    state.discarded = round.discarded;
+    state.discardTrayCount = round.discardTrayCount;
+    state.pendingPayoutVisual = false;
+    state.busy = false;
+    // Cards already on the table reappear in place instead of being dealt again.
+    state.dealer.cards.concat(state.pendingDeal).forEach(function (card) { card._shown = true; });
+    state.hands.forEach(function (hand) { hand.cards.forEach(function (card) { card._shown = true; }); });
+    if (round.resume === "deal") {
+      var opening = state.pendingDeal;
+      state.pendingDeal = [];
+      state.hands[0].cards = [opening[0], opening[2]];
+      state.dealer.cards = opening[3] ? [opening[1], opening[3]] : [opening[1]];
+    }
+
+    state.phase = { deal: "dealing", insurance: "insurance", player: "player" }[round.resume] || "dealer";
+    hideResult(true);
+    renderBankroll(true);
+    renderBet();
+    renderShoeStatus();
+    renderStats();
+    renderDealer();
+    renderPlayer();
+    setBannerKey("yourTurn");
+    updateControls();
+    toastKey("roundRestored", "");
+
+    switch (round.resume) {
+      case "deal": afterOpeningDeal(); break;
+      case "insurance": openInsurance(state.insuranceMode === "evenMoney"); break;
+      case "player": awaitPlayer(); break;
+      case "dealer": dealerPlay(); break;
+      default: revealAndSettle();
+    }
+    return true;
+  }
+
   function applySettingsUI() {
     $("setHitSoft17").checked = !!state.settings.hitSoft17;
     applySoundUI();
@@ -2151,7 +2259,10 @@
     applySettingsUI();
     updateControls();
     persistSettings();
-    withAccount(function () { persistBankroll(); persistStats(); renderBankroll(true); renderStats(); });
+    withAccount(function () {
+      if (resumeRound()) return;
+      persistBankroll(); persistStats(); renderBankroll(true); renderStats();
+    }, true);
     if (!sharedAccount) toastKey("temporaryAccount", "");
     window.addEventListener("storage", function (event) {
       if (event.key === KEYS.bankroll || event.key === KEYS.stats || event.key === null) syncIdleAccount();

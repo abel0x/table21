@@ -31,6 +31,7 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 - **Bundled typography**: the interface uses a locally packaged OFL-licensed WOFF2 family, with no font service or network dependency.
 - **Internationalisation**: **English (primary)** and **Turkish**, including felt rules, dialogs, card names for assistive technology, and number formatting. The chosen language is **saved in the browser** (`localStorage`) and restored on every visit.
 - **Persistent** bankroll, statistics (hands, wins, losses, pushes, blackjacks, win rate) and settings. Auto re‑stake when you bust out. Supporting browsers coordinate shared balances across tabs using Web Locks; without that API, each tab uses a separate session balance and displays a notice.
+- **Unfinished hands survive**: a reload, a crash or a closed tab resumes the same hand with the same cards and the stake still on the table (another tab picks it up on its next deal). Refreshing can neither refund a bad hand nor replay its cards; a snapshot that cannot be trusted voids the round and returns its stake.
 - **Safe updates and amounts**: PWA updates wait for an idle, unstaked table and do not force another open tab to reload. Amounts use whole dollars; fractional returns round down, as explained in settings. Wager limits reserve enough safe-integer headroom for settlement without reducing an existing valid balance.
 - **Accessible & responsive**: keyboard focus is contained in dialogs, zoom remains available, reduced-motion is respected, and narrow mobile layouts show only the controls relevant to the current phase.
 - **Keyboard shortcuts**: `D` deal/double · `H` hit · `S` stand · `P` split · `X` surrender · `R` rebet · `C` clear · `Y/N` insurance · `Esc` decline/close.
@@ -43,9 +44,9 @@ The core test suite uses only Node's built-in test runner; there is nothing to i
 node --test tests        # same as: npm test
 ```
 
-The suite currently executes **518 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
+The suite currently executes **546 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
 
-The optional real-browser suite adds **150 Chromium tests**, including `file://` play, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **159 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
@@ -65,6 +66,7 @@ js/engine.js       pure, dependency-free rules and payout engine
 js/rules.js        table profiles and profile-specific action rules
 js/chip-stack.js   scalable high-limit bet-pile model
 js/strategy.js     pure basic-strategy charts for the coach
+js/round.js        pure snapshot capture/validation for unfinished rounds
 js/game.js         game state, betting, rendering, and interactions
 js/pwa.js          optional service-worker registration and safe updates
 manifest.json     installable PWA metadata
@@ -100,5 +102,6 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Dokulu keçe, ahşap/pirinç masa kenarı, gerçek A–10 sembol dizilimleri, farklı Vale/Kız/Papaz figürleri, dağıtım pabucu, ıskarta tepsisi ve pürüzsüz vektör jetonlar tamamen yerel HTML/CSS/SVG ile çizilir.
 - Harici istek, paket veya CDN yoktur; `file://` kullanımı testlerle korunur.
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
+- Yarım kalan el; sayfa yenilense, tarayıcı çökse ya da sekme kapansa bile aynı kartlarla ve masadaki bahisle kaldığı yerden devam eder. Yenilemek kötü giden bir eli geri almaz; güvenilmeyen bir kayıt eli iptal eder ve bahsi iade eder.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **668 test geçti** (518 Node + 150 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- Son doğrulamada **705 test geçti** (546 Node + 159 Chromium); 27 Eylül denetiminde ayrıca seçili **31 Firefox testi** başarılı oldu. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).

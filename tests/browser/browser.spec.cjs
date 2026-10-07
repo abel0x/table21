@@ -713,3 +713,141 @@ test("a browser without Ogg support plays the bundled AAC samples", async () => 
     assert.deepEqual([...new Set(loaded)], ["ok"]);
   });
 });
+
+// Unfinished rounds (added 2026-10-07): a reload, a crash or a closed tab
+// resumes the same hand with the stake still on the table, so refreshing can
+// neither refund a bad hand nor replay its cards.
+const savedRound = page => page.evaluate(() => JSON.parse(localStorage.getItem("vbj.round")));
+const ranks = (page, selector) => page.$$eval(selector, nodes => nodes.map(node => node.className.match(/\brank-(\w+)/)[1].toUpperCase()));
+const reloadTable = async page => { await page.reload({ waitUntil: "load" }); await page.waitForFunction(() => document.body.dataset.busy === "false"); };
+
+test("a reload during a decision resumes the hand and cannot refund a losing stake", async () => {
+  await scene({ draw: ["10", "9", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    assert.equal((await savedRound(page)).resume, "player");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10000");
+    await reloadTable(page); await phase(page, "player");
+    assert.equal(await page.$eval("#bankroll", node => node.textContent), "9,900");
+    assert.deepEqual(await ranks(page, "#playerHands .card"), ["10", "6"]);
+    assert.equal(await page.$$eval("#dealerHand .card-inner.facedown", nodes => nodes.length), 1);
+    assert.match(await page.$eval("#toast", node => node.textContent), /unfinished hand is back/);
+    await page.click("#btnStand"); await phase(page, "betting");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "9900");
+    assert.equal(await savedRound(page), null);
+  });
+});
+
+test("an insurance offer comes back after a reload", async () => {
+  await scene({ draw: ["10", "A", "9", "7"] }, async page => {
+    await deal(page); await phase(page, "insurance");
+    await reloadTable(page); await phase(page, "insurance");
+    assert.equal(await page.$eval("#insuranceOverlay", node => node.hidden), false);
+    await page.click("#btnInsNo"); await phase(page, "player");
+    await page.click("#btnStand"); await phase(page, "betting");
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10100");
+  });
+});
+
+test("split and doubled hands survive a reload and the dealer draws the same next card", async () => {
+  await scene({ draw: ["8", "6", "8", "10", "3", "10", "2", "9"] }, async page => {
+    const ready = () => page.waitForFunction(() => document.body.dataset.phase === "player" && document.body.dataset.busy === "false");
+    await deal(page); await ready();
+    await page.click("#btnSplit"); await ready();
+    await page.click("#btnDouble"); await ready();
+    await reloadTable(page); await ready();
+    assert.equal(await page.$eval("#bankroll", node => node.textContent), "9,700");
+    assert.equal(await page.$$eval(".player-hand", nodes => nodes.length), 2);
+    assert.equal(await page.$$eval(".player-hand:first-child .double-card", nodes => nodes.length), 1);
+    assert.equal(await page.$eval(".player-hand.active", node => node === node.parentElement.children[1]), true);
+    assert.deepEqual(await ranks(page, ".player-hand.active .card"), ["8", "2"]);
+    await page.click("#btnStand"); await phase(page, "betting");
+    const round = await page.evaluate(() => auditSettlement);
+    assert.deepEqual(round.outcomes, ["dealerBust", "dealerBust"]);
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10300");
+  });
+});
+
+test("a reload while the dealer plays finishes the same round", async () => {
+  await scene({ holdTimers: true, draw: ["10", "6", "7", "10", "9"] }, async page => {
+    await deal(page); await phase(page, "player");
+    await page.evaluate(() => new MutationObserver((records, observer) => {
+      if (document.body.dataset.phase !== "dealer") return;
+      window.holdTableTimers(true);
+      observer.disconnect();
+    }).observe(document.body, { attributes: true, attributeFilter: ["data-phase"] }));
+    await page.click("#btnStand"); await phase(page, "dealer");
+    assert.equal((await savedRound(page)).resume, "dealer");
+    await reloadTable(page); await phase(page, "betting");
+    const round = await page.evaluate(() => auditSettlement);
+    assert.equal(round.dealerTotal, 25);
+    assert.deepEqual(round.outcomes, ["dealerBust"]);
+    assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10100");
+  });
+});
+
+test("a reload during the opening deal keeps the cards that were dealt", async () => {
+  await scene({ holdTimers: true, draw: ["10", "9", "6", "8"] }, async page => {
+    // Freeze the deal the moment its opening cards are saved.
+    await page.evaluate(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        setItem.call(this, key, value);
+        if (key === "vbj.round" && JSON.parse(value).resume === "deal") window.holdTableTimers(true);
+      };
+    });
+    await deal(page);
+    await page.waitForFunction(() => document.querySelectorAll("#playerHands .card").length === 1);
+    await reloadTable(page); await phase(page, "player");
+    assert.deepEqual(await ranks(page, "#playerHands .card"), ["10", "6"]);
+    assert.equal(await page.$eval("#bankroll", node => node.textContent), "9,900");
+  });
+});
+
+test("a tab closed mid-hand hands its round to the next deal in another tab", async () => {
+  await scene({ draw: ["10", "9", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    const second = await secondTab(page);
+    try {
+      await page.close();
+      await deal(second); await phase(second, "player");
+      assert.deepEqual(await ranks(second, "#playerHands .card"), ["10", "6"]);
+      assert.equal(await second.$eval("#bankroll", node => node.textContent), "9,900");
+      await second.click("#btnStand"); await phase(second, "betting");
+      assert.equal(await second.evaluate(() => localStorage.getItem("vbj.bankroll")), "9900");
+    } finally { await second.close(); }
+  });
+});
+
+for (const [name, damage] of [
+  ["a damaged snapshot", () => localStorage.setItem("vbj.round", JSON.stringify({ v: 1, resume: "player", hands: "broken" }))],
+  ["changed table rules", () => localStorage.setItem("vbj.settings", JSON.stringify(Object.assign(JSON.parse(localStorage.getItem("vbj.settings")), { ruleProfile: "lasVegas" })))]
+]) {
+  test("an unfinished hand is voided, returning its stake, after " + name, async () => {
+    await scene({ draw: ["10", "9", "6", "8"] }, async page => {
+      await deal(page); await phase(page, "player");
+      await page.evaluate(damage);
+      await reloadTable(page);
+      assert.equal(await page.evaluate(() => document.body.dataset.phase), "betting");
+      assert.equal(await page.$eval("#bankroll", node => node.textContent), "10,000");
+      assert.equal(await savedRound(page), null);
+      assert.match(await page.$eval("#toast", node => node.textContent), /could not be restored/);
+    });
+  });
+}
+
+test("a deposit made while a hand waits in a closed tab is kept when the hand resumes", async () => {
+  await scene({ draw: ["10", "9", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    const second = await secondTab(page);
+    try {
+      await page.close();
+      await second.click("#settingsBtn"); await second.click('[data-deposit="1000"]');
+      await second.waitForFunction(() => localStorage.getItem("vbj.bankroll") === "11000");
+      await second.keyboard.press("Escape");
+      await deal(second); await phase(second, "player");
+      assert.equal(await second.$eval("#bankroll", node => node.textContent), "10,900");
+      await second.click("#btnStand"); await phase(second, "betting");
+      assert.equal(await second.evaluate(() => localStorage.getItem("vbj.bankroll")), "10900");
+    } finally { await second.close(); }
+  });
+});
