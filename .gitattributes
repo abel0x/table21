@@ -1,0 +1,9 @@
+# Store text files with LF and check them out with LF on every platform.
+* text=auto eol=lf
+
+# Binary assets: no line-ending conversion, no text diffs.
+*.png   binary
+*.jpg   binary
+*.woff2 binary
+*.ogg   binary
+*.m4a   binary

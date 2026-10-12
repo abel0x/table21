@@ -1,3 +1,23 @@
+# Dependencies (only the optional browser tests need npm install)
 node_modules/
+
+# Logs and coverage reports
 *.log
+coverage/
+
+# Local environment files
+.env
+.env.*
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating systems
 .DS_Store
+Thumbs.db
+desktop.ini
+.directory
