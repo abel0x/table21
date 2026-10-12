@@ -1,3 +1,6 @@
+/* Table 21 · Copyright (C) 2026 abel0x
+   SPDX-License-Identifier: AGPL-3.0-or-later
+   Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms. */
 /* =========================================================
    Table 21 basic strategy
    Pure and dependency-free: given a hand, the dealer's up-card and the active

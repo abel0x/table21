@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Table 21 · Copyright (C) 2026 abel0x
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms.
 set -euo pipefail
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

@@ -1,3 +1,6 @@
+/* Table 21 · Copyright (C) 2026 abel0x
+   SPDX-License-Identifier: AGPL-3.0-or-later
+   Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms. */
 "use strict";
 
 // Real-browser suite. Puppeteer is a development dependency only; the game never loads it.

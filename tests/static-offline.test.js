@@ -1,3 +1,6 @@
+/* Table 21 · Copyright (C) 2026 abel0x
+   SPDX-License-Identifier: AGPL-3.0-or-later
+   Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms. */
 "use strict";
 
 var test = require("node:test");
@@ -63,6 +66,27 @@ test("the settings dialog carries the disclaimer, version and license", function
   var version = JSON.parse(read("package.json")).version;
   assert.match(about[0], new RegExp("</span> " + version.replace(/\./g, "\\.") + "</span>"), "version matches package.json");
   assert.match(read("js/game.js"), /'a\[href\], button:not\(\[disabled\]\)/, "the dialog focus trap includes links");
+});
+
+test("every source file names its copyright holder and license", function () {
+  var pkg = JSON.parse(read("package.json"));
+  var files = ["index.html", "sw.js", "css/styles.css", "tools/generate-audio.sh"];
+  ["js", "tests", "tests/browser"].forEach(function (dir) {
+    fs.readdirSync(path.join(root, dir)).filter(function (name) { return /\.c?js$/.test(name); })
+      .forEach(function (name) { files.push(dir + "/" + name); });
+  });
+  assert.equal(pkg.license, "AGPL-3.0-or-later");
+  assert.equal(pkg.author, "abel0x");
+  files.forEach(function (file) {
+    var head = read(file).slice(0, 400);
+    assert.match(head, /Copyright \(C\) 2026 abel0x/, file);
+    assert.match(head, new RegExp("SPDX-License-Identifier: " + pkg.license.replace(/[.-]/g, "\\$&")), file);
+  });
+  // The license text stays verbatim: its own terms forbid changing it, and
+  // GitHub only recognizes the license when it matches the published text.
+  var license = read("LICENSE");
+  assert.match(license, /^\s+GNU AFFERO GENERAL PUBLIC LICENSE\n\s+Version 3, 19 November 2007\n/);
+  assert.match(license, /END OF TERMS AND CONDITIONS/);
 });
 
 test("GitHub Pages serves the files as they are, with a matching link preview", function () {

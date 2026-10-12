@@ -1,3 +1,6 @@
+/* Table 21 · Copyright (C) 2026 abel0x
+   SPDX-License-Identifier: AGPL-3.0-or-later
+   Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms. */
 /* =========================================================
    Table 21 unfinished-round snapshots
    Pure and dependency-free. game.js saves a snapshot whenever the table waits
