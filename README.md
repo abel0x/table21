@@ -74,6 +74,7 @@ sw.js              offline cache (only used when served over http)
 icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
 assets/audio/      local card, chip, payout, and shuffle sounds (Ogg + AAC)
 assets/fonts/      local WOFF2 interface font + OFL license
+assets/icons/      PNG install icons (192, 512 and a maskable 512)
 tools/             reproducible local audio generator
 tests/             dependency-free rules, strategy, behavior and offline integrity tests
 tests/browser/     optional real-browser suite (Puppeteer, development only)

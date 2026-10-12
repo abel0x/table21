@@ -148,8 +148,25 @@ test("manifest icons are local and available", function () {
   manifest.icons.forEach(function (icon) {
     assert.doesNotMatch(icon.src, /^(?:https?:)?\/\//);
     assert.ok(fs.existsSync(path.resolve(root, icon.src)));
-    assert.equal(icon.type, "image/svg+xml");
+    if (icon.type === "image/svg+xml") {
+      assert.equal(icon.sizes, "any");
+      return;
+    }
+    // Declared PNG sizes must match the pixels, or launchers rescale the art.
+    assert.equal(icon.type, "image/png");
+    var png = fs.readFileSync(path.resolve(root, icon.src));
+    assert.equal(png.subarray(1, 4).toString(), "PNG", icon.src);
+    assert.equal(png.readUInt32BE(16) + "x" + png.readUInt32BE(20), icon.sizes, icon.src);
   });
+});
+
+test("installers get 192 and 512 PNG icons and a separate maskable one", function () {
+  var icons = JSON.parse(read("manifest.json")).icons;
+  var any = icons.filter(function (icon) { return icon.purpose === "any" && icon.type === "image/png"; });
+  assert.deepEqual(any.map(function (icon) { return icon.sizes; }).sort(), ["192x192", "512x512"]);
+  // "any maskable" on one image either crops the art or pads it; keep them apart.
+  icons.forEach(function (icon) { assert.ok(icon.purpose === "any" || icon.purpose === "maskable", icon.src); });
+  assert.ok(icons.some(function (icon) { return icon.purpose === "maskable" && icon.sizes === "512x512"; }));
 });
 
 test("the app icon is a self-contained scalable vector", function () {
