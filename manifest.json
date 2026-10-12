@@ -1,7 +1,11 @@
 {
   "name": "Table 21: Offline Blackjack",
   "short_name": "Table 21",
-  "description": "A polished blackjack game that works completely offline.",
+  "description": "A free, play-money blackjack simulation that works completely offline.",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",

@@ -9,13 +9,14 @@
   <meta name="theme-color" content="#0b3d2e" />
   <meta name="color-scheme" content="dark" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="description" content="A polished blackjack game that works completely offline."
+  <meta name="apple-mobile-web-app-title" content="Table 21" />
+  <meta name="description" content="A free, play-money blackjack simulation that works completely offline."
         data-i18n-content="appDescription" />
   <title>Table 21: Offline Blackjack</title>
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Table 21" />
   <meta property="og:title" content="Table 21: Offline Blackjack" />
-  <meta property="og:description" content="A polished blackjack game that works completely offline." />
+  <meta property="og:description" content="A free, play-money blackjack simulation that works completely offline." />
   <meta property="og:url" content="https://abel0x.github.io/table21/" />
   <meta property="og:image" content="https://abel0x.github.io/table21/assets/social-preview.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -375,12 +376,12 @@
         </div>
 
         <div class="setting-row deposit-row">
-          <label for="depositAmount" data-i18n="addFunds">Add funds</label>
+          <label for="depositAmount" data-i18n="addFunds">Add play money</label>
           <div class="deposit-field">
             <span class="deposit-currency">$</span>
             <input id="depositAmount" class="deposit-input" type="number" min="1" step="1"
                    inputmode="numeric" placeholder="0" aria-label="Amount" data-i18n-aria-label="amount" />
-            <button id="btnDeposit" class="btn btn-primary deposit-btn" type="button" data-i18n="deposit">Deposit</button>
+            <button id="btnDeposit" class="btn btn-primary deposit-btn" type="button" data-i18n="deposit">Add</button>
           </div>
         </div>
         <div class="deposit-presets" role="group" aria-label="Quick add" data-i18n-aria-label="quickAdd">
@@ -396,9 +397,9 @@
 
         <section class="about" aria-labelledby="disclaimerTitle">
           <h3 id="disclaimerTitle" data-i18n="disclaimerTitle">Disclaimer</h3>
-          <p data-i18n="disclaimerPlayMoney">Table 21 is for entertainment only. Chips and balances are play money with no cash value: they cannot be bought, sold or exchanged for money or prizes, and no real-money gambling is offered.</p>
+          <p data-i18n="disclaimerPlayMoney">Table 21 is a blackjack simulation for entertainment only. Chips and balances are play money with no cash value: they cannot be bought, sold or exchanged for money or prizes, and no real-money gambling is offered.</p>
           <p data-i18n="disclaimerOdds">Results here do not predict play at a real table. If gambling is causing problems for you or someone close to you, please seek help.</p>
-          <p data-i18n="disclaimerWarranty">Not affiliated with any casino. Provided as is, without warranty of any kind.</p>
+          <p data-i18n="disclaimerWarranty">Intended for adults. Not affiliated with any casino. Provided as is, without warranty of any kind.</p>
           <p class="about-meta">
             <span><span data-i18n="versionLabel">Version</span> 1.0.0</span>
             <span data-i18n="licenseNotice">Free software under the GNU AGPL v3</span>

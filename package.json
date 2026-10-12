@@ -2,7 +2,7 @@
   "name": "table21",
   "version": "1.0.0",
   "private": true,
-  "description": "Static, offline blackjack. The game itself has no dependencies; Puppeteer is only for the optional browser tests.",
+  "description": "Static, offline blackjack simulation with play money only. The game itself has no dependencies; Puppeteer is only for the optional browser tests.",
   "author": "abel0x",
   "license": "AGPL-3.0-or-later",
   "homepage": "https://abel0x.github.io/table21/",

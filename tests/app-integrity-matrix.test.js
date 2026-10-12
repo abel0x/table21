@@ -172,6 +172,25 @@ test("installers get 192 and 512 PNG icons and a separate maskable one", functio
   assert.ok(icons.some(function (icon) { return icon.purpose === "maskable" && icon.sizes === "512x512"; }));
 });
 
+test("home screens and app stores get the short name and a games category", function () {
+  var manifest = JSON.parse(read("manifest.json"));
+  // Without it iOS names the home-screen icon after the cut-off page title.
+  assert.match(read("index.html"), /<meta name="apple-mobile-web-app-title" content="Table 21" \/>/);
+  assert.equal(manifest.short_name, "Table 21");
+  assert.deepEqual(manifest.categories, ["games", "entertainment"]);
+});
+
+test("balance controls speak of play money, never of banking", function () {
+  var html = read("index.html");
+  assert.match(html, /data-i18n="addFunds">Add play money</);
+  assert.match(html, /id="btnDeposit"[^>]*data-i18n="deposit">Add</);
+  var strings = Array.from(read("js/i18n.js").matchAll(/^\s+\w+: "([^"]*)"/gm), function (match) { return match[1]; });
+  assert.ok(strings.length > 300);
+  strings.forEach(function (text) {
+    assert.doesNotMatch(text, /deposit|withdraw|cash out|para yatır|para çek/i, text);
+  });
+});
+
 test("the app icon is a self-contained scalable vector", function () {
   var icon = read("icon.svg");
   assert.match(icon, /^<svg\b/);

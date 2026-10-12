@@ -213,7 +213,7 @@ test("apply updates text, title, aria-label, placeholder, and metadata", functio
   assert.equal(titleNode.attributes.title, "Settings");
   assert.equal(ariaNode.attributes["aria-label"], "Close");
   assert.equal(placeholderNode.attributes.placeholder, "Amount");
-  assert.equal(contentNode.attributes.content, "A polished blackjack game that works completely offline.");
+  assert.equal(contentNode.attributes.content, "A free, play-money blackjack simulation that works completely offline.");
   assert.equal(lang, "en");
   assert.equal(document.title, "Table 21: Offline Blackjack");
 });
