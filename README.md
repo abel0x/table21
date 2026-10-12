@@ -1,19 +1,25 @@
 # Table 21 🂡
 
-A polished, **fully static & offline** blackjack game. No build step, no runtime dependencies, no network. Open and play.
+> [!IMPORTANT]
+> **Disclaimer:** Table 21 is a blackjack simulation made for entertainment and as a portfolio project. It uses play money only: there are no payments, deposits, withdrawals or prizes, and the chips have no cash value. It is not a gambling service, does not promote gambling and is not intended for any unlawful or harmful use. It is provided as is, without warranty, and the author accepts no liability for its use. Please read the full [disclaimer](#disclaimer).
 
-**[Play Table 21 in your browser](https://abel0x.github.io/table21/)** · Version 1.0.0 · [GNU AGPL v3](LICENSE)
+A polished, **fully static & offline** blackjack simulation that uses play money only. No build step, no runtime dependencies, no network. Open and play.
 
-> Türkçe açıklama aşağıda. / Turkish notes below.
+**[Play Table 21 in your browser](https://abel0x.github.io/table21/)** · Version 1.0.0 · [GNU AGPL v3](LICENSE) · [![Tests](https://github.com/abel0x/table21/actions/workflows/tests.yml/badge.svg)](https://github.com/abel0x/table21/actions/workflows/tests.yml)
+
+![A hand in play on the Emerald table](assets/social-preview.jpg)
 
 ## Play
 
 - **Online:** open https://abel0x.github.io/table21/ and play. Install it from the browser menu (or *Add to Home Screen* on iOS) to keep a copy that works offline.
-- **Double‑click `index.html`** to play instantly (works from `file://`, completely offline), **or**
-- Serve the folder for PWA install / service‑worker offline caching:
+- **Locally:** clone the repository and double‑click `index.html`. It works straight from `file://`, completely offline:
+  ```bash
+  git clone https://github.com/abel0x/table21.git
+  ```
+- **Local server**, for PWA install and service‑worker offline caching:
   ```bash
   cd table21
-  python3 -m http.server 8000
+  python3 -m http.server 8000   # or: npm run serve
   # open http://localhost:8000
   ```
 
@@ -39,6 +45,10 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 - **Accessible & responsive**: keyboard focus is contained in dialogs, zoom remains available, reduced-motion is respected, and narrow mobile layouts show only the controls relevant to the current phase.
 - **Keyboard shortcuts**: `D` deal/double · `H` hit · `S` stand · `P` split · `X` surrender · `R` rebet · `C` clear · `Y/N` insurance · `Esc` decline/close.
 
+## Privacy
+
+Table 21 has no accounts, analytics, cookies or trackers, and it talks to no server beyond loading its own files. Settings, statistics, the play-money balance and any unfinished hand are kept in your browser's `localStorage` and never leave your device; clearing the site's data resets them. The online version is hosted on GitHub Pages, which may log visits as described in [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+
 ## Verify
 
 The core test suite uses only Node's built-in test runner (Node.js 22.12 or newer); there is nothing to install:
@@ -47,48 +57,61 @@ The core test suite uses only Node's built-in test runner (Node.js 22.12 or newe
 npm test                 # node --test "tests/*.test.js" "tests/*.test.cjs"
 ```
 
-The suite currently executes **550 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, the disclaimer and license notice, and earlier behavior regressions.
+The suite currently executes **553 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, the disclaimer and license notices, and earlier behavior regressions. GitHub Actions runs it on Node 22, 24 and 26 for every push and pull request.
 
-The optional real-browser suite adds **162 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **163 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
-npm install
+npm install              # also downloads the Chrome build Puppeteer drives
 npm run test:browser
 ```
+
+## Development
+
+There is no build step: edit a file and reload the page. Whenever a change touches a file the game ships, bump `CACHE_VERSION` in `sw.js` so that installed copies pick up the new version; the update waits until the table is idle. `tools/generate-audio.sh` rebuilds the sound samples with ffmpeg.
 
 ## Files
 
 ```
-index.html        markup + layout
-css/styles.css    the complete Table 21 look
-js/i18n.js         translations (EN/TR) + persistence
-js/sound.js        local sample playback + Web Audio fallback
-js/engine.js       pure, dependency-free rules and payout engine
-js/rules.js        table profiles and profile-specific action rules
-js/chip-stack.js   scalable high-limit bet-pile model
-js/strategy.js     pure basic-strategy charts for the coach
-js/round.js        pure snapshot capture/validation for unfinished rounds
-js/game.js         game state, betting, rendering, and interactions
-js/pwa.js          optional service-worker registration and safe updates
-manifest.json     installable PWA metadata
-sw.js              offline cache (only used when served over http)
-icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
-assets/audio/      local card, chip, payout, and shuffle sounds (Ogg + AAC)
-assets/fonts/      local WOFF2 interface font + OFL license
-assets/icons/      PNG install icons (192, 512 and a maskable 512)
+index.html                 markup + layout
+css/styles.css             the complete Table 21 look
+js/i18n.js                 translations (EN/TR) + persistence
+js/sound.js                local sample playback + Web Audio fallback
+js/engine.js               pure, dependency-free rules and payout engine
+js/rules.js                table profiles and profile-specific action rules
+js/chip-stack.js           scalable high-limit bet-pile model
+js/strategy.js             pure basic-strategy charts for the coach
+js/round.js                pure snapshot capture/validation for unfinished rounds
+js/game.js                 game state, betting, rendering, and interactions
+js/pwa.js                  optional service-worker registration and safe updates
+manifest.json              installable PWA metadata
+sw.js                      offline cache (only used when served over http)
+icon.svg                   app icon (apple-touch-icon.png: iOS home-screen PNG)
+assets/audio/              local card, chip, payout, and shuffle sounds (Ogg + AAC)
+assets/fonts/              local WOFF2 interface font + OFL license
+assets/icons/              PNG install icons (192, 512 and a maskable 512)
 assets/social-preview.jpg  1200×630 link-preview image
-tools/             reproducible local audio generator
-tests/             dependency-free rules, strategy, behavior and offline integrity tests
-tests/browser/     optional real-browser suite (Puppeteer, development only)
-package.json       test scripts + dev-only Puppeteer (not needed to play)
-LICENSE            GNU Affero General Public License v3
+tools/                     reproducible local audio generator
+tests/                     dependency-free rules, strategy, behavior and offline integrity tests
+tests/browser/             optional real-browser suite (Puppeteer, development only)
+.github/workflows/         continuous integration for the core suite
+package.json               test scripts + dev-only Puppeteer (not needed to play)
+CHANGELOG.md               release notes
+LICENSE                    GNU Affero General Public License v3
 ```
 
 ## Disclaimer
 
-Table 21 is a free game made for entertainment. Chips and balances are play money with no cash value: they cannot be bought, sold or exchanged for money or prizes, and the game offers no real-money gambling. Results here do not predict play at a real table. If gambling is causing problems for you or someone close to you, please seek help.
+Table 21 is a free blackjack simulation built for entertainment, for practising basic strategy and as a portfolio project.
 
-Table 21 is not affiliated with any casino; the Las Vegas, Atlantic City and European profiles only describe common rule sets. The software is provided as is, without warranty of any kind; see sections 15 and 16 of the license.
+- **Play money only.** Chips and balances have no cash value. They cannot be bought, sold or exchanged for money or prizes, and *Add play money* only adds free chips.
+- **Not gambling.** Table 21 is not a gambling service, offers no real-money play, does not promote gambling and is not intended for any unlawful or harmful use.
+- **No real-money advice.** The strategy coach teaches textbook basic strategy for learning purposes. Neither the coach nor results in the game are a guide to real-money play.
+- **Intended for adults.** Like other simulated casino games, Table 21 is not aimed at minors.
+- **No affiliation.** Table 21 is not affiliated with any casino. The Las Vegas, Atlantic City and European profiles only describe common rule sets.
+- **No warranty, no liability.** The software is provided as is, without warranty of any kind, and the author accepts no liability for its use; see sections 15 and 16 of the [license](LICENSE). You are responsible for complying with the laws that apply where you live.
+
+If gambling is causing problems for you or someone close to you, please seek help.
 
 ## License
 
@@ -97,39 +120,3 @@ Copyright (C) 2026 abel0x
 Table 21 is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 The bundled interface font is licensed separately under the SIL Open Font License 1.1 ([`assets/fonts/OFL.txt`](assets/fonts/OFL.txt)).
-
----
-
-## Türkçe
-
-Özenli bir masa deneyimi sunan, **tamamen statik ve çevrimdışı** çalışan blackjack oyunu. Kurulum/derleme gerektirmez, internet kullanmaz.
-
-- Tarayıcıda oynamak için: **https://abel0x.github.io/table21/**. Tarayıcı menüsünden yüklerseniz çevrimdışı da çalışır.
-- Bilgisayarda oynamak için **`index.html` dosyasına çift tıklayın** (çevrimdışı, `file://` ile çalışır).
-- Kartlar `crypto.getRandomValues` ile **tamamen rastgele** karılır.
-- **Las Vegas, Atlantic City ve European** masa profilleri dağıtım, kapalı kart, peek, double, surrender ve split kurallarını birlikte değiştirir.
-- **Hit, Stand, Double, Split, Surrender, Insurance**, garantili ödeme (even money) ve Rebet bulunur; Blackjack **3:2** öder.
-- Yumuşak eller karar sürerken iki değeriyle gösterilir (`7/17`, krupiyenin As'ı `1/11`). Double kartı yan yatırılır; 3-4 el masayı doldurduğunda elin üzerine çapraz konur. Split ellerin etiketleri kompakttır ve her elin net sonucunu gösterir; eller masayı paylaşırken kural plakası çekilir. Sigorta teklifi kartların üstünü değil kontrol alanını kaplar. El sonunda net tutarı da gösteren tek bir sonuç rozeti çıkar.
-- İsteğe bağlı **strateji koçu** etkin masa kurallarına göre temel stratejiyi bilir. *Uyarı* modu farklı bir hamleden sonra doğrusunu söyler, *İpucu* modu ayrıca doğru butonu işaretler. İstatistiklerde strateji doğruluğu yüzdesi tutulur.
-- Dil ve üç masa/kart arkası temasından seçiminiz tarayıcıya kaydedilir ve her açılışta hatırlanır.
-- Kartlar pabuçtan çıkar, seçili kurala göre kapalı kart fiziksel olarak açılır ve el bitince ıskarta tepsisine gider. Her split eli kendi gerçek jeton yığınına sahiptir; double olduğunda ilgili yığın büyür, ödeme ve toplama her el için ayrı yapılır.
-- Masa plakası limitleri, deste sayısını, S17/H17 kuralını ve etkin masa profilini gösterir. Kısa yatay ekranlarda kartlarla çakışmaması için sadeleşir veya gizlenir; tüm kurallar ayarlardan okunabilir.
-- Hızlı/Normal/Sinematik animasyon temposu ile ana ses, kart, jeton ve masa efekti düzeyleri ayrı ayrı ayarlanıp tarayıcıda saklanır.
-- Kart, jeton, ödeme ve karıştırma sesleri yerel OGG dosyalarıdır; OGG çalamayan Safari sürümleri için AAC (`.m4a`) kopyaları da pakettedir. Arayüz fontu da yerel WOFF2 olarak paketlenmiştir.
-- Yüksek limitli bahis yığınları miktarla beraber büyür; büyük tutarlarda kartlara taşmadan kompakt satırlara yerleşir.
-- Dokulu keçe, ahşap/pirinç masa kenarı, gerçek A–10 sembol dizilimleri, farklı Vale/Kız/Papaz figürleri, dağıtım pabucu, ıskarta tepsisi ve pürüzsüz vektör jetonlar tamamen yerel HTML/CSS/SVG ile çizilir.
-- Harici istek, paket veya CDN yoktur; `file://` kullanımı testlerle korunur.
-- Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
-- Yarım kalan el; sayfa yenilense, tarayıcı çökse ya da sekme kapansa bile aynı kartlarla ve masadaki bahisle kaldığı yerden devam eder. Yenilemek kötü giden bir eli geri almaz; güvenilmeyen bir kayıt eli iptal eder ve bahsi iade eder.
-- Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- **712 test** geçiyor (550 Node + 162 Chromium); komutlar yukarıdaki *Verify* bölümünde.
-
-### Sorumluluk reddi
-
-Table 21 eğlence amaçlı, ücretsiz bir oyundur. Jetonlar ve bakiye nakit değeri olmayan oyun parasıdır: satın alınamaz, satılamaz, paraya ya da ödüle çevrilemez; oyunda gerçek parayla kumar yoktur. Buradaki sonuçlar gerçek bir masada ne olacağını göstermez. Kumar sizin ya da bir yakınınız için sorun olmaya başladıysa lütfen yardım alın.
-
-Table 21'in hiçbir kumarhaneyle bağlantısı yoktur; Las Vegas, Atlantic City ve European profilleri yalnızca yaygın kural setlerini tanımlar. Yazılım olduğu gibi, hiçbir garanti verilmeden sunulur.
-
-### Lisans
-
-Table 21, GNU Affero Genel Kamu Lisansı'nın 3. sürümü ya da (tercihinize göre) daha sonraki bir sürümü altında dağıtılan özgür yazılımdır; lisans metni [LICENSE](LICENSE) dosyasındadır. Arayüz fontu ayrıca SIL Open Font License 1.1 ile lisanslıdır.
