@@ -283,7 +283,9 @@
   var Sound = {
     setEnabled: function (v) {
       enabled = !!v;
-      if (enabled) { preloadSamples(); ensure(); }
+      // The audio context starts on the first gesture (unlock) or the first
+      // synthesized cue; creating it at load only earns an autoplay warning.
+      if (enabled) preloadSamples();
       else stopActiveSamples();
       applyVolumes();
     },
