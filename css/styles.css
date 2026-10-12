@@ -139,7 +139,7 @@ body[data-theme="bordeaux"] {
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-:where(button, input, [tabindex]):focus-visible {
+:where(a, button, input, [tabindex]):focus-visible {
   outline: 3px solid var(--gold-bright);
   outline-offset: 3px;
 }
@@ -2399,6 +2399,34 @@ body[data-phase="insurance"] .controls > :not(.ins-overlay) { opacity: 0; pointe
 .preset-btn:not(:disabled):hover { background: rgba(217,182,95,.16); border-color: var(--gold); transform: translateY(-1px); }
 .preset-btn:disabled { opacity: .42; cursor: not-allowed; }
 .modal-foot { display: flex; gap: 10px; justify-content: flex-end; padding-top: 6px; }
+
+/* About: disclaimer, version, license and source link */
+.about {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--panel-line);
+}
+.about h3 {
+  font-family: var(--font-display);
+  font-size: 15px; letter-spacing: 1px; color: var(--gold-bright);
+}
+.about p {
+  color: rgba(244, 239, 226, .62);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.about .about-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding-top: 2px;
+  color: rgba(217, 182, 95, .78);
+  font-size: 11px;
+  letter-spacing: .3px;
+}
+.about-meta a { color: var(--gold-bright); text-underline-offset: 2px; }
+.about-meta a:hover { color: var(--cream); }
 
 /* ----------------------- Toast ----------------------- */
 .toast {

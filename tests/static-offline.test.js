@@ -37,11 +37,32 @@ test("the service worker precaches the complete app shell", function () {
 
 test("runtime files contain no remote fetch, script, stylesheet, or image URL", function () {
   ["index.html", "css/styles.css", "js/i18n.js", "js/sound.js", "js/engine.js", "js/rules.js", "js/chip-stack.js", "js/game.js", "js/pwa.js", "sw.js"].forEach(function (file) {
-    var source = read(file);
+    // A plain <a href> only navigates when followed; it never loads anything.
+    var source = read(file).replace(/<a\b[^>]*>/gi, "");
     assert.doesNotMatch(source, /(?:src|href)\s*=\s*["']https?:\/\//i, file);
     assert.doesNotMatch(source, /url\(\s*["']?https?:\/\//i, file);
     assert.doesNotMatch(source, /fetch\(\s*["']https?:\/\//i, file);
   });
+});
+
+test("the only outbound link is the source code, opened in a new tab", function () {
+  var links = read("index.html").match(/<a\b[^>]*>/gi) || [];
+  assert.equal(links.length, 1);
+  assert.match(links[0], /href="https:\/\/github\.com\/abel0x\/table21"/);
+  assert.match(links[0], /target="_blank"/);
+  assert.match(links[0], /rel="noopener"/);
+});
+
+test("the settings dialog carries the disclaimer, version and license", function () {
+  var html = read("index.html");
+  var about = html.match(/<section class="about"[\s\S]*?<\/section>/);
+  assert.ok(about, "about section");
+  ["disclaimerTitle", "disclaimerPlayMoney", "disclaimerOdds", "disclaimerWarranty", "licenseNotice", "sourceCode"].forEach(function (key) {
+    assert.match(about[0], new RegExp('data-i18n="' + key + '"'), key);
+  });
+  var version = JSON.parse(read("package.json")).version;
+  assert.match(about[0], new RegExp("</span> " + version.replace(/\./g, "\\.") + "</span>"), "version matches package.json");
+  assert.match(read("js/game.js"), /'a\[href\], button:not\(\[disabled\]\)/, "the dialog focus trap includes links");
 });
 
 test("all DOM ids requested by game.js exist in index.html", function () {

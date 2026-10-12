@@ -305,11 +305,34 @@ test("an invalid fractional deposit is rejected instead of silently rounded", as
 test("mouse and keyboard settings dialogs retain focus inside and restore it", async () => {
   await scene({}, async page => {
     await page.click("#settingsBtn"); await page.focus("#btnResetStats"); await page.keyboard.press("Tab");
+    // The source link closes the dialog's tab order, then focus wraps to Close.
+    assert.equal(await page.evaluate(() => document.activeElement.matches("#settingsModal .about-meta a")), true);
+    await page.keyboard.press("Tab");
     assert.equal(await page.evaluate(() => document.activeElement.matches("#settingsModal button[data-close]")), true);
+    await reverseTab(page); assert.equal(await page.evaluate(() => document.activeElement.matches("#settingsModal .about-meta a")), true);
     await reverseTab(page); assert.equal(await page.evaluate(() => document.activeElement.id), "btnResetStats");
     await page.keyboard.press("Escape"); assert.equal(await page.evaluate(() => document.activeElement.id), "settingsBtn");
   });
 });
+
+for (const lang of ["en", "tr"]) {
+  test(lang + ": the disclaimer and source link fit a 320px settings dialog", async () => {
+    await scene({ lang, width: 320, height: 568 }, async page => {
+      await page.click("#settingsBtn");
+      await page.$eval("#settingsModal .about", node => node.scrollIntoView({ block: "end" }));
+      const about = await page.$eval("#settingsModal .about", node => {
+        const card = node.closest(".modal-card").getBoundingClientRect();
+        const rects = [...node.querySelectorAll("h3, p, a")].map(child => child.getBoundingClientRect());
+        return {
+          inside: rects.every(rect => rect.left >= card.left && rect.right <= card.right && rect.width > 0),
+          overflow: node.scrollWidth > node.clientWidth,
+          link: node.querySelector("a").getBoundingClientRect().bottom <= innerHeight
+        };
+      });
+      assert.deepEqual(about, { inside: true, overflow: false, link: true });
+    });
+  });
+}
 
 test("Enter on the focused Clear button clears the wager without starting a hand", async () => {
   await scene({ draw: ["10", "9", "7", "8"] }, async page => {

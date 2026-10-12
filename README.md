@@ -80,7 +80,22 @@ tests/             dependency-free rules, strategy, behavior and offline integri
 tests/browser/     optional real-browser suite (Puppeteer, development only)
 audits/            dated findings and verification reports
 package.json       test scripts + dev-only Puppeteer (not needed to play)
+LICENSE            GNU Affero General Public License v3
 ```
+
+## Disclaimer
+
+Table 21 is a free game made for entertainment. Chips and balances are play money with no cash value: they cannot be bought, sold or exchanged for money or prizes, and the game offers no real-money gambling. Results here do not predict play at a real table. If gambling is causing problems for you or someone close to you, please seek help.
+
+Table 21 is not affiliated with any casino; the Las Vegas, Atlantic City and European profiles only describe common rule sets. The software is provided as is, without warranty of any kind; see sections 15 and 16 of the license.
+
+## License
+
+Copyright (C) 2026 abel0x
+
+Table 21 is free software: you can redistribute it and/or modify it under the terms of the [GNU Affero General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+The bundled interface font is licensed separately under the SIL Open Font License 1.1 ([`assets/fonts/OFL.txt`](assets/fonts/OFL.txt)).
 
 ---
 
@@ -106,3 +121,13 @@ package.json       test scripts + dev-only Puppeteer (not needed to play)
 - Yarım kalan el; sayfa yenilense, tarayıcı çökse ya da sekme kapansa bile aynı kartlarla ve masadaki bahisle kaldığı yerden devam eder. Yenilemek kötü giden bir eli geri almaz; güvenilmeyen bir kayıt eli iptal eder ve bahsi iade eder.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
 - Son doğrulamada **706 test geçti** (546 Node + 160 Chromium). Aynı tarayıcı paketi Firefox 157'de de çalıştırıldı; dört öykünme testi BiDi bağdaştırıcısında desteklenmediği için atlandı, kalanların hiçbiri başarısız olmadı. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+
+### Sorumluluk reddi
+
+Table 21 eğlence amaçlı, ücretsiz bir oyundur. Jetonlar ve bakiye nakit değeri olmayan oyun parasıdır: satın alınamaz, satılamaz, paraya ya da ödüle çevrilemez; oyunda gerçek parayla kumar yoktur. Buradaki sonuçlar gerçek bir masada ne olacağını göstermez. Kumar sizin ya da bir yakınınız için sorun olmaya başladıysa lütfen yardım alın.
+
+Table 21'in hiçbir kumarhaneyle bağlantısı yoktur; Las Vegas, Atlantic City ve European profilleri yalnızca yaygın kural setlerini tanımlar. Yazılım olduğu gibi, hiçbir garanti verilmeden sunulur.
+
+### Lisans
+
+Table 21, GNU Affero Genel Kamu Lisansı'nın 3. sürümü ya da (tercihinize göre) daha sonraki bir sürümü altında dağıtılan özgür yazılımdır; lisans metni [LICENSE](LICENSE) dosyasındadır. Arayüz fontu ayrıca SIL Open Font License 1.1 ile lisanslıdır.
