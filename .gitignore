@@ -21,3 +21,8 @@ coverage/
 Thumbs.db
 desktop.ini
 .directory
+
+# Local tool settings and private notes (never published)
+.claude/
+.serena/
+audits/
