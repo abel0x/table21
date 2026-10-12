@@ -12,7 +12,7 @@
 
   var DICT = {
     en: {
-      appTitle: "Table 21: Offline Blackjack",
+      appTitle: "Table 21",
       appDescription: "A free, play-money blackjack simulation that works completely offline.",
       brandName: "Table 21",
       subtitle: "Offline Blackjack",
@@ -214,7 +214,7 @@
     },
 
     tr: {
-      appTitle: "Table 21: Çevrimdışı Blackjack",
+      appTitle: "Table 21",
       appDescription: "Tamamen çevrimdışı çalışan, oyun parasıyla oynanan ücretsiz bir blackjack simülasyonu.",
       brandName: "Table 21",
       subtitle: "Çevrimdışı Blackjack",

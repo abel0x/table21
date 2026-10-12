@@ -215,7 +215,7 @@ test("apply updates text, title, aria-label, placeholder, and metadata", functio
   assert.equal(placeholderNode.attributes.placeholder, "Amount");
   assert.equal(contentNode.attributes.content, "A free, play-money blackjack simulation that works completely offline.");
   assert.equal(lang, "en");
-  assert.equal(document.title, "Table 21: Offline Blackjack");
+  assert.equal(document.title, "Table 21");
 });
 
 test("all user-facing strings avoid accidental repeated spaces", function () {

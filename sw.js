@@ -3,7 +3,7 @@
    Free software with ABSOLUTELY NO WARRANTY; see LICENSE for the terms. */
 /* Service worker — caches the static shell for full offline play.
    Only used when the game is served over http(s); on file:// it is skipped. */
-var CACHE_VERSION = "vbj-v40";
+var CACHE_VERSION = "vbj-v41";
 var APP_ROOT = new URL("./", self.location.href || self.location.origin + "/");
 var CACHE_PREFIX = "vbj-" + encodeURIComponent(APP_ROOT.pathname) + "-";
 var CACHE = CACHE_PREFIX + CACHE_VERSION.slice(4);

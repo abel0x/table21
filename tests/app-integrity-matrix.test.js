@@ -172,10 +172,17 @@ test("installers get 192 and 512 PNG icons and a separate maskable one", functio
   assert.ok(icons.some(function (icon) { return icon.purpose === "maskable" && icon.sizes === "512x512"; }));
 });
 
-test("home screens and app stores get the short name and a games category", function () {
+test("the site, its tabs and every home screen are named Table 21", function () {
+  var html = read("index.html");
   var manifest = JSON.parse(read("manifest.json"));
-  // Without it iOS names the home-screen icon after the cut-off page title.
-  assert.match(read("index.html"), /<meta name="apple-mobile-web-app-title" content="Table 21" \/>/);
+  assert.match(html, /<title>Table 21<\/title>/);
+  assert.match(html, /<meta property="og:title" content="Table 21" \/>/);
+  assert.match(html, /<meta name="application-name" content="Table 21" \/>/);
+  // Without it iOS names the home-screen icon after the page title.
+  assert.match(html, /<meta name="apple-mobile-web-app-title" content="Table 21" \/>/);
+  // English and Turkish tab titles alike.
+  assert.equal((read("js/i18n.js").match(/^\s+appTitle: "Table 21",$/gm) || []).length, 2);
+  assert.equal(manifest.name, "Table 21");
   assert.equal(manifest.short_name, "Table 21");
   assert.deepEqual(manifest.categories, ["games", "entertainment"]);
 });
