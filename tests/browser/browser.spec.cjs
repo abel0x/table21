@@ -770,6 +770,25 @@ test("an insurance offer comes back after a reload", async () => {
   });
 });
 
+test("a reload waits for its previous page to let go of the account lock", async () => {
+  await scene({ draw: ["10", "9", "6", "8"] }, async page => {
+    await deal(page); await phase(page, "player");
+    const holder = await secondTab(page);
+    try {
+      // Queue behind the hand's lock and keep it for 1.5s once the reload frees
+      // it, like a previous page that is slow to go away under load.
+      await holder.evaluate(() => {
+        window.held = navigator.locks.request("vbj.account", () => new Promise(resolve => setTimeout(resolve, 1500)));
+      });
+      await page.bringToFront();
+      await reloadTable(page); await phase(page, "player");
+      assert.deepEqual(await ranks(page, "#playerHands .card"), ["10", "6"]);
+      assert.equal(await page.$eval("#bankroll", node => node.textContent), "9,900");
+      assert.doesNotMatch(await page.$eval("#toast", node => node.textContent), /Another tab/);
+    } finally { await holder.close(); }
+  });
+});
+
 test("split and doubled hands survive a reload and the dealer draws the same next card", async () => {
   await scene({ draw: ["8", "6", "8", "10", "3", "10", "2", "9"] }, async page => {
     const ready = () => page.waitForFunction(() => document.body.dataset.phase === "player" && document.body.dataset.busy === "false");

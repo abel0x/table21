@@ -170,7 +170,7 @@
     renderStats();
     updateControls();
   }
-  function withAccount(action, holdForRound) {
+  function withAccount(action, holdForRound, patience) {
     if (accountHeld) return Promise.resolve(action());
     if (accountPending) return Promise.resolve(false);
     accountPending = true;
@@ -199,7 +199,7 @@
     // Brief writes queue normally. An unfinished hand in another tab yields a
     // visible, bounded refusal instead of leaving controls waiting indefinitely.
     var controller = new AbortController();
-    lockTimer = setTimeout(function () { controller.abort(); }, 700);
+    lockTimer = setTimeout(function () { controller.abort(); }, patience || 700);
     return navigator.locks.request("vbj.account", { signal: controller.signal }, run).catch(function (error) {
       clearTimeout(lockTimer);
       if (started) throw error;
@@ -2259,10 +2259,16 @@
     applySettingsUI();
     updateControls();
     persistSettings();
+    // A reload replaces this tab's previous page, which may still be letting go
+    // of the lock it held for an unfinished hand. Waiting only 700ms here took a
+    // slow release for another tab: the table came back empty and the hand only
+    // resumed on the next deal.
+    var navigation = window.performance && performance.getEntriesByType
+      ? performance.getEntriesByType("navigation")[0] : null;
     withAccount(function () {
       if (resumeRound()) return;
       persistBankroll(); persistStats(); renderBankroll(true); renderStats();
-    }, true);
+    }, true, navigation && navigation.type === "reload" ? 4000 : 0);
     if (!sharedAccount) toastKey("temporaryAccount", "");
     window.addEventListener("storage", function (event) {
       if (event.key === KEYS.bankroll || event.key === KEYS.stats || event.key === null) syncIdleAccount();
