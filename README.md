@@ -2,14 +2,17 @@
 
 A polished, **fully static & offline** blackjack game. No build step, no runtime dependencies, no network. Open and play.
 
+**[Play Table 21 in your browser](https://abel0x.github.io/table21/)** · Version 1.0.0 · [GNU AGPL v3](LICENSE)
+
 > Türkçe açıklama aşağıda. / Turkish notes below.
 
 ## Play
 
+- **Online:** open https://abel0x.github.io/table21/ and play. Install it from the browser menu (or *Add to Home Screen* on iOS) to keep a copy that works offline.
 - **Double‑click `index.html`** to play instantly (works from `file://`, completely offline), **or**
 - Serve the folder for PWA install / service‑worker offline caching:
   ```bash
-  cd blackjack
+  cd table21
   python3 -m http.server 8000
   # open http://localhost:8000
   ```
@@ -44,16 +47,14 @@ The core test suite uses only Node's built-in test runner; there is nothing to i
 node --test tests        # same as: npm test
 ```
 
-The suite currently executes **546 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, and the behavior regressions from the 24 September audit.
+The suite currently executes **550 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, the disclaimer and license notice, and earlier behavior regressions.
 
-The optional real-browser suite adds **160 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
+The optional real-browser suite adds **162 Chromium tests**, including `file://` play, hands resumed after reloads and closed tabs, split-hand layouts from 320 px phones to desktop, offline PWA reloads, live updates, multiple tabs, keyboard use, language changes, and all 52 cards in both languages. Puppeteer is declared as a development-only dependency in `package.json`; the game itself never loads it:
 
 ```bash
 npm install
 npm run test:browser
 ```
-
-Dated reports in `audits/` record earlier findings, Firefox cross-checks and coverage limits; start with the [27 September fix and verification report](audits/2026-09-27/REPORT.md).
 
 ## Files
 
@@ -75,10 +76,10 @@ icon.svg          app icon (apple-touch-icon.png: iOS home-screen PNG)
 assets/audio/      local card, chip, payout, and shuffle sounds (Ogg + AAC)
 assets/fonts/      local WOFF2 interface font + OFL license
 assets/icons/      PNG install icons (192, 512 and a maskable 512)
+assets/social-preview.jpg  1200×630 link-preview image
 tools/             reproducible local audio generator
 tests/             dependency-free rules, strategy, behavior and offline integrity tests
 tests/browser/     optional real-browser suite (Puppeteer, development only)
-audits/            dated findings and verification reports
 package.json       test scripts + dev-only Puppeteer (not needed to play)
 LICENSE            GNU Affero General Public License v3
 ```
@@ -103,7 +104,8 @@ The bundled interface font is licensed separately under the SIL Open Font Licens
 
 Özenli bir masa deneyimi sunan, **tamamen statik ve çevrimdışı** çalışan blackjack oyunu. Kurulum/derleme gerektirmez, internet kullanmaz.
 
-- Oynamak için **`index.html` dosyasına çift tıklayın** (çevrimdışı, `file://` ile çalışır).
+- Tarayıcıda oynamak için: **https://abel0x.github.io/table21/**. Tarayıcı menüsünden yüklerseniz çevrimdışı da çalışır.
+- Bilgisayarda oynamak için **`index.html` dosyasına çift tıklayın** (çevrimdışı, `file://` ile çalışır).
 - Kartlar `crypto.getRandomValues` ile **tamamen rastgele** karılır.
 - **Las Vegas, Atlantic City ve European** masa profilleri dağıtım, kapalı kart, peek, double, surrender ve split kurallarını birlikte değiştirir.
 - **Hit, Stand, Double, Split, Surrender, Insurance**, garantili ödeme (even money) ve Rebet bulunur; Blackjack **3:2** öder.
@@ -120,7 +122,7 @@ The bundled interface font is licensed separately under the SIL Open Font Licens
 - Destekleyen tarayıcılarda sekmeler ortak bakiye işlemlerini sıraya alır; bir sekmede el sürerken diğerinde bakiye değiştirilemez. Web Locks desteği yoksa ortak kaydı ezmek yerine sekmeye özel oturum bakiyesi kullanılır ve uyarı gösterilir.
 - Yarım kalan el; sayfa yenilense, tarayıcı çökse ya da sekme kapansa bile aynı kartlarla ve masadaki bahisle kaldığı yerden devam eder. Yenilemek kötü giden bir eli geri almaz; güvenilmeyen bir kayıt eli iptal eder ve bahsi iade eder.
 - Güncellemeler devam eden eli kesmez. Tutarlar tam dolar olarak tutulur, kesirli iadeler aşağı yuvarlanır; ayarlarda bu davranış açıklanır. Güvenli hesap sınırını aşacak yeni bahisler engellenir, mevcut geçerli bakiye korunur.
-- Son doğrulamada **706 test geçti** (546 Node + 160 Chromium). Aynı tarayıcı paketi Firefox 157'de de çalıştırıldı; dört öykünme testi BiDi bağdaştırıcısında desteklenmediği için atlandı, kalanların hiçbiri başarısız olmadı. Bu sonuç bütün cihazlarda sıfır hata garantisi değildir. Ayrıntılar ve tekrar çalıştırma komutları [düzeltme raporunda](audits/2026-09-27/REPORT.md).
+- **712 test** geçiyor (550 Node + 162 Chromium); komutlar yukarıdaki *Verify* bölümünde.
 
 ### Sorumluluk reddi
 

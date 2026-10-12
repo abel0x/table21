@@ -65,6 +65,29 @@ test("the settings dialog carries the disclaimer, version and license", function
   assert.match(read("js/game.js"), /'a\[href\], button:not\(\[disabled\]\)/, "the dialog focus trap includes links");
 });
 
+test("GitHub Pages serves the files as they are, with a matching link preview", function () {
+  assert.ok(fs.existsSync(path.join(root, ".nojekyll")), "without .nojekyll Pages runs the site through Jekyll");
+  var html = read("index.html");
+  var homepage = JSON.parse(read("package.json")).homepage;
+  var meta = function (property) {
+    var match = html.match(new RegExp('<meta property="' + property + '" content="([^"]+)"'));
+    assert.ok(match, property);
+    return match[1];
+  };
+  assert.match(homepage, /^https:\/\/[^/]+\/[^/]+\/$/);
+  assert.equal(meta("og:url"), homepage);
+  var image = meta("og:image");
+  assert.equal(image.indexOf(homepage), 0, "the preview image ships with the site");
+  var jpeg = fs.readFileSync(path.join(root, image.slice(homepage.length)));
+  assert.equal(jpeg.readUInt16BE(0), 0xffd8, "JPEG");
+  var size = null;
+  for (var offset = 2; offset < jpeg.length && !size; offset += 2 + jpeg.readUInt16BE(offset + 2)) {
+    var marker = jpeg.readUInt16BE(offset);
+    if (marker === 0xffc0 || marker === 0xffc2) size = jpeg.readUInt16BE(offset + 7) + "x" + jpeg.readUInt16BE(offset + 5);
+  }
+  assert.equal(size, meta("og:image:width") + "x" + meta("og:image:height"));
+});
+
 test("all DOM ids requested by game.js exist in index.html", function () {
   var html = read("index.html");
   var game = read("js/game.js");

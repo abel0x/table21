@@ -1,6 +1,6 @@
 "use strict";
 
-// Originally added for the 24 September audit; retained as regression guards.
+// Regression guards for earlier behavior fixes.
 // Part of the core suite: node --test tests
 const test = require("node:test");
 const assert = require("node:assert/strict");

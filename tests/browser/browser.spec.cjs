@@ -22,7 +22,7 @@ test.before(async () => {
     if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
     try {
       let body = fs.readFileSync(file);
-      if (relative === "sw.js") body = Buffer.from(body.toString().replace(/vbj-v\d+/, "vbj-audit-" + workerRevision));
+      if (relative === "sw.js") body = Buffer.from(body.toString().replace(/vbj-v\d+/, "vbj-spec-" + workerRevision));
       const mime = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".png": "image/png", ".woff2": "font/woff2" }[path.extname(file)] || "application/octet-stream";
       response.writeHead(200, { "Content-Type": mime, "Cache-Control": "no-store" }).end(body);
     } catch { response.writeHead(404).end(); }
@@ -32,8 +32,8 @@ test.before(async () => {
   browser = await puppeteer.launch(isFirefox
     ? { browser: "firefox", executablePath: process.env.BLACKJACK_BROWSER_PATH || "/usr/bin/firefox", headless: true, protocolTimeout: 15000, extraPrefsFirefox: { "ui.prefersReducedMotion": 1 } }
     : { headless: true, protocolTimeout: 15000, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  console.log("Audit browser: " + await browser.version());
-  console.log("Audit screenshots: " + artifacts);
+  console.log("Browser: " + await browser.version());
+  console.log("Screenshots: " + artifacts);
 });
 
 test.after(async () => {
@@ -74,13 +74,13 @@ async function scene(options, run) {
         if (!held) parked.splice(0).forEach(run => nativeSetTimeout(run, 0));
       };
     }
-    if (!sessionStorage.getItem("audit.initialized")) {
+    if (!sessionStorage.getItem("spec.initialized")) {
       localStorage.clear();
       localStorage.setItem("vbj.bankroll", JSON.stringify(config.bankroll == null ? 10000 : config.bankroll));
       localStorage.setItem("vbj.settings", JSON.stringify(Object.assign({ ruleProfile: "atlanticCity", theme: "emerald", animationSpeed: "fast" }, config.settings)));
       localStorage.setItem("vbj.lang", config.lang || "en");
       localStorage.setItem("vbj.sound", "false");
-      sessionStorage.setItem("audit.initialized", "true");
+      sessionStorage.setItem("spec.initialized", "true");
     }
     Object.defineProperty(window, "BlackjackEngine", {
       configurable: true,
@@ -91,7 +91,7 @@ async function scene(options, run) {
               const rank = typeof spec === "string" ? spec : spec.rank;
               const suit = typeof spec === "string" ? null : spec.suit;
               const index = shoe.findIndex(card => card.rank === rank && (!suit || card.suit === suit));
-              if (index < 0) throw new Error("Invalid audit shoe: missing " + rank);
+              if (index < 0) throw new Error("Invalid test shoe: missing " + rank);
               return shoe.splice(index, 1)[0];
             });
             return shoe.concat(selected.reverse());
@@ -100,7 +100,7 @@ async function scene(options, run) {
         const settle = api.settleRound;
         api.settleRound = function () {
           const result = settle.apply(api, arguments);
-          window.auditSettlement = JSON.parse(JSON.stringify(result));
+          window.lastSettlement = JSON.parse(JSON.stringify(result));
           return result;
         };
         Object.defineProperty(window, "BlackjackEngine", { value: api, writable: true, configurable: true });
@@ -261,7 +261,7 @@ for (const [width, height] of [[844,390], [667,375], [568,320], [640,400]]) {
       assert.deepEqual(clipped, []);
       if (process.env.BLACKJACK_SCREENSHOTS) await page.screenshot({ path: path.join(artifacts, "landscape-" + width + "-" + height + ".png"), fullPage: true });
       await page.click("#btnStand"); await phase(page, "betting");
-      assert.equal(await page.evaluate(() => auditSettlement.profit), 0);
+      assert.equal(await page.evaluate(() => lastSettlement.profit), 0);
     });
   });
 }
@@ -443,7 +443,7 @@ test("changing the live system reduced-motion setting updates game timing", { sk
 test("European insurance still pays after the player busts", async () => {
   await scene({ settings: { ruleProfile: "european" }, draw: ["10", "A", "7", "K", "K"] }, async page => {
     await deal(page); await phase(page, "insurance"); await page.click("#btnInsYes"); await phase(page, "player"); await page.click("#btnHit"); await phase(page, "betting");
-    const round = await page.evaluate(() => auditSettlement);
+    const round = await page.evaluate(() => lastSettlement);
     assert.deepEqual(round.outcomes, ["bust"]); assert.equal(round.insuranceReturn, 150); assert.equal(round.profit, 0);
   });
 });
@@ -451,7 +451,7 @@ test("European insurance still pays after the player busts", async () => {
 test("European dealer blackjack collects both halves of a doubled wager", async () => {
   await scene({ settings: { ruleProfile: "european" }, draw: ["5", "10", "6", "10", "A"] }, async page => {
     await deal(page); await phase(page, "player"); await page.click("#btnDouble"); await phase(page, "betting");
-    const round = await page.evaluate(() => auditSettlement);
+    const round = await page.evaluate(() => lastSettlement);
     assert.deepEqual(round.outcomes, ["lose"]); assert.equal(round.profit, -200); assert.equal(round.dealerBlackjack, true);
   });
 });
@@ -466,7 +466,7 @@ test("four split hands settle independently and preserve total stake", async () 
       await page.waitForFunction(() => !document.querySelector("#btnStand").disabled); await page.click("#btnStand");
     }
     await phase(page, "betting");
-    const round = await page.evaluate(() => auditSettlement);
+    const round = await page.evaluate(() => lastSettlement);
     assert.equal(round.counts.hands, 4); assert.equal(round.mainStake, 400); assert.equal(round.counts.wins + round.counts.losses + round.counts.pushes, 4);
   });
 });
@@ -501,7 +501,7 @@ test("four split hands fit the shortest landscape table and remain playable", as
       await page.waitForFunction(() => !document.querySelector("#btnStand").disabled); await page.click("#btnStand");
     }
     await phase(page, "betting");
-    assert.equal(await page.evaluate(() => auditSettlement.counts.hands), 4);
+    assert.equal(await page.evaluate(() => lastSettlement.counts.hands), 4);
   });
 });
 
@@ -511,7 +511,7 @@ test("an offline PWA can reload and finish a complete deterministic hand", { ski
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     await page.setOfflineMode(true); await page.reload({ waitUntil: "load" });
     await deal(page); await phase(page, "player"); await page.click("#btnStand"); await phase(page, "betting");
-    assert.equal(await page.evaluate(() => auditSettlement.profit), 100);
+    assert.equal(await page.evaluate(() => lastSettlement.profit), 100);
   });
 });
 
@@ -520,7 +520,6 @@ test("installing a new real service worker preserves a live player decision", as
     await page.evaluate(() => navigator.serviceWorker.ready); await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     await page.reload({ waitUntil: "load" });
     await deal(page); await phase(page, "player");
-    await page.evaluate(() => { window.auditLiveDocument = true; });
     workerRevision++;
     const navigation = page.waitForNavigation({ waitUntil: "load", timeout: 2500 }).then(() => true, error => {
       if (error.name === "TimeoutError") return false;
@@ -784,7 +783,7 @@ test("split and doubled hands survive a reload and the dealer draws the same nex
     assert.equal(await page.$eval(".player-hand.active", node => node === node.parentElement.children[1]), true);
     assert.deepEqual(await ranks(page, ".player-hand.active .card"), ["8", "2"]);
     await page.click("#btnStand"); await phase(page, "betting");
-    const round = await page.evaluate(() => auditSettlement);
+    const round = await page.evaluate(() => lastSettlement);
     assert.deepEqual(round.outcomes, ["dealerBust", "dealerBust"]);
     assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10300");
   });
@@ -801,7 +800,7 @@ test("a reload while the dealer plays finishes the same round", async () => {
     await page.click("#btnStand"); await phase(page, "dealer");
     assert.equal((await savedRound(page)).resume, "dealer");
     await reloadTable(page); await phase(page, "betting");
-    const round = await page.evaluate(() => auditSettlement);
+    const round = await page.evaluate(() => lastSettlement);
     assert.equal(round.dealerTotal, 25);
     assert.deepEqual(round.outcomes, ["dealerBust"]);
     assert.equal(await page.evaluate(() => localStorage.getItem("vbj.bankroll")), "10100");
