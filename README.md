@@ -41,10 +41,10 @@ A polished, **fully static & offline** blackjack game. No build step, no runtime
 
 ## Verify
 
-The core test suite uses only Node's built-in test runner; there is nothing to install:
+The core test suite uses only Node's built-in test runner (Node.js 22.12 or newer); there is nothing to install:
 
 ```bash
-node --test tests        # same as: npm test
+npm test                 # node --test "tests/*.test.js" "tests/*.test.cjs"
 ```
 
 The suite currently executes **550 deterministic cases**. It covers exhaustive hand and payout matrices, every basic-strategy chart cell and rule variation, split naturals, insurance, even money, surrender, table-profile rules, scalable chip layouts, active-sound behavior, translation parity, persistence boundaries, accessibility contracts, local asset references, DOM integrity, responsive safeguards, the complete service-worker app shell, the disclaimer and license notice, and earlier behavior regressions.

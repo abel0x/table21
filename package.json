@@ -9,12 +9,18 @@
     "type": "git",
     "url": "git+https://github.com/abel0x/table21.git"
   },
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "test": "node --test tests",
+    "test": "node --test \"tests/*.test.js\" \"tests/*.test.cjs\"",
     "test:browser": "node --test tests/browser/browser.spec.cjs",
     "serve": "python3 -m http.server 8000 --bind 127.0.0.1"
   },
   "devDependencies": {
-    "puppeteer": "23.11.1"
+    "puppeteer": "25.13.0"
+  },
+  "allowScripts": {
+    "puppeteer@25.13.0": true
   }
 }
